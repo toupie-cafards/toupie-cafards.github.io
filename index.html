@@ -673,6 +673,21 @@
 <div id="cine"><div class="lb t"></div><div class="lb b"></div><div class="lid t"></div><div class="lid b"></div><div class="fade"></div><div id="cineSub"></div><button id="cineSkip">Passer ⏭</button></div>
 <button class="linkBtn" id="skipIntro">Passer ⏭</button>
 
+<script>
+// Déménagement (nov. 2026) : l'ancienne adresse louisdeeguerry-dev.github.io/toupie-cafards renvoie ici
+// avec la sauvegarde du joueur dans #migrer=… ; on la reprend si elle est plus avancée que celle d'ici.
+(function () {
+  var h = location.hash;
+  if (h.indexOf("#migrer=") !== 0) return;
+  try {
+    var d = JSON.parse(decodeURIComponent(h.slice(8))), ls = localStorage, K = "toupie-cafards-save-v1";
+    var avance = function (s) { try { return JSON.parse(s).totalMoney || 0; } catch (e) { return -1; } };
+    if (d.save && avance(d.save) > avance(ls.getItem(K) || "{}")) ls.setItem(K, d.save);
+    if (d.lang && !ls.getItem("toupie-cafards-lang")) ls.setItem("toupie-cafards-lang", d.lang);
+  } catch (e) { /* sauvegarde illisible : on garde celle d'ici */ }
+  history.replaceState(null, "", location.pathname + location.search);
+})();
+</script>
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js" } }
 </script>
