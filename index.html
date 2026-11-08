@@ -6206,6 +6206,7 @@ function endWave() {
   run.wave++;
   startWave();
   checkDefiWave(run);
+  if (run.mode === 'histoire' && (run.wave <= 5 || run.wave % 5 === 0)) statsSend(run.wave); // vagues 1 à 5, puis toutes les 5
   if (run.wave > state.best[run.mode]) {
     // Nouveau record (une seule annonce par partie, et pas pour les toutes premières vagues)
     if (!run.recordShown && state.best[run.mode] >= 5) run.newRecord = run.recordShown = true;
@@ -6626,6 +6627,7 @@ const SHARE_URL = 'https://toupie-cafards.github.io/';
 const DEFI_KEY = 'toupie-cafards-defi';
 let defi = null;
 try { defi = JSON.parse(STORE.getItem(DEFI_KEY)); } catch { defi = null; }
+window.__entryUrl = location.search; // adresse d'arrivée, avant que le défi n'en soit retiré (compteur)
 (function readDefiLink() {
   const q = new URLSearchParams(location.search);
   const w = parseInt(q.get('defi'), 10), t = parseFloat(q.get('chrono'));
@@ -6757,6 +6759,61 @@ async function lbAuth() {
   save();
   return lbToken;
 }
+// =====================================================================
+//  COMPTEUR ANONYME : combien de joueurs par jour, sur quel site, jusqu'où ils vont.
+//  /stats/j/<jour UTC>/<id> = { s: site, w: plus haute vague du jour, n: 1 si c'est sa toute première visite,
+//  r: site d'où il vient (nom de domaine seul, ex. youtube.com), d: 1 s'il est arrivé par un lien de défi }.
+//  L'id est un nombre au hasard propre à l'appareil : ni pseudo, ni compte, ni adresse IP enregistrée.
+//  Rien n'est envoyé en local (localhost) ni en mode test.
+// =====================================================================
+const STATS_KEY = 'toupie-cafards-pid';
+const STATS_SITE = (() => {
+  if (ON_CG) return 'crazygames';
+  if (NATIVE) return 'appli';
+  const host = location.hostname;
+  if (!host || host === 'localhost' || host === '127.0.0.1' || /^192\.168\./.test(host)) return '';
+  if (/(^|\.)toupie-cafards\.github\.io$/.test(host)) return 'site';
+  if (/louisdeeguerry-dev\.github\.io$/.test(host)) return 'site';
+  if (/itch\.zone$|itch\.io$/.test(host)) return 'itch';
+  if (/ungrounded\.net$|newgrounds\.com$/.test(host)) return 'newgrounds';
+  if (/gamejolt\.(net|com)$/.test(host)) return 'gamejolt';
+  return 'autre';
+})();
+const statsOn = !!(STATS_SITE && !TEST_MODE && LB_CONFIG.dbURL);
+let statsPid = '', statsFirst = false, statsWave = -1;
+if (statsOn) {
+  try { statsPid = STORE.getItem(STATS_KEY) || ''; } catch { /* stockage bloqué */ }
+  if (!/^[a-z0-9]{12}$/.test(statsPid)) {
+    statsPid = Array.from(crypto.getRandomValues(new Uint8Array(12)), b => 'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
+    statsFirst = true;
+    try { STORE.setItem(STATS_KEY, statsPid); } catch { /* stockage bloqué : compté comme nouveau à chaque fois */ }
+  }
+}
+// Site d'origine : seulement le nom de domaine, et seulement s'il est extérieur au jeu
+const statsRef = (() => {
+  try {
+    const r = new URL(document.referrer).hostname.replace(/^www\./, '');
+    return r && r !== location.hostname ? r.slice(0, 40) : '';
+  } catch { return ''; }
+})();
+const statsDefi = /[?&](defi|chrono)=/.test(window.__entryUrl || '');
+function statsSend(wave) {
+  if (!statsOn) return;
+  const w = Math.max(0, Math.min(300, wave | 0));
+  if (w <= statsWave) return;
+  const first = statsWave < 0;
+  statsWave = w;
+  const day = new Date().toISOString().slice(0, 10);
+  const body = { s: STATS_SITE, w };
+  if (first) {
+    if (statsFirst) body.n = 1;
+    if (statsRef) body.r = statsRef;
+    if (statsDefi) body.d = 1;
+  }
+  fetch(`${LB_CONFIG.dbURL}/stats/j/${day}/${statsPid}.json`, { method: 'PATCH', body: JSON.stringify(body), keepalive: true }).catch(() => { /* hors ligne : tant pis */ });
+}
+setTimeout(() => statsSend(0), 4000); // compté seulement s'il reste au moins 4 secondes
+
 // Envoie la meilleure vague (seulement si elle a progressé, ou si le pseudo a changé)
 let lbSending = false;
 async function lbSubmit(force = false) {
@@ -6993,7 +7050,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-08.1';
+const VERSION = '2026-11-08.2';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {

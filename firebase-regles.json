@@ -3,26 +3,75 @@
     "leaderboard": {
       "histoire": {
         ".read": true,
-        ".indexOn": ["wave"],
+        ".indexOn": [
+          "wave"
+        ],
         "$uid": {
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "newData.hasChildren(['pseudo', 'wave', 't']) && (!data.exists() || newData.child('wave').val() >= data.child('wave').val())",
-          "pseudo": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
-          "wave": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 300" },
-          "t": { ".validate": "newData.isNumber()" },
-          "$other": { ".validate": false }
+          "pseudo": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+          },
+          "wave": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 300"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
         }
       },
       "speedrun": {
         ".read": true,
-        ".indexOn": ["time"],
+        ".indexOn": [
+          "time"
+        ],
         "$uid": {
           ".write": "auth != null && auth.uid === $uid",
           ".validate": "newData.hasChildren(['pseudo', 'time', 't']) && (!data.exists() || newData.child('time').val() <= data.child('time').val())",
-          "pseudo": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16" },
-          "time": { ".validate": "newData.isNumber() && newData.val() >= 300 && newData.val() <= 360000" },
-          "t": { ".validate": "newData.isNumber()" },
-          "$other": { ".validate": false }
+          "pseudo": {
+            ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+          },
+          "time": {
+            ".validate": "newData.isNumber() && newData.val() >= 300 && newData.val() <= 360000"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "stats": {
+      ".read": true,
+      "j": {
+        "$day": {
+          "$pid": {
+            ".write": "newData.exists() && $day.matches(/^20[0-9][0-9]-[01][0-9]-[0-3][0-9]$/) && $pid.matches(/^[a-z0-9]{12}$/)",
+            ".validate": "newData.hasChildren(['s', 'w'])",
+            "s": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12"
+            },
+            "w": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 300"
+            },
+            "n": {
+              ".validate": "newData.val() === 1"
+            },
+            "d": {
+              ".validate": "newData.val() === 1"
+            },
+            "r": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         }
       }
     }
