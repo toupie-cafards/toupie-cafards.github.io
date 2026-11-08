@@ -24,6 +24,7 @@ html = html.split(anchor).join(
   "<script>window.PLATFORM = 'crazygames';</script>\n" + anchor);
 html = html.split('./vendor/three.module.js').join('./three.module.js');
 html = html.split('href="app-assets/icon-192.png"').join('href="icon-192.png"');
+html = html.split("'app-assets/icon-512.png'").join("'icon-192.png'"); // image de partage (inutilisée : partage masqué sur CrazyGames)
 // pas de manifeste d'appli, d'adresse canonique ni d'aperçu de partage vers le site
 html = html.replace(/<link rel="(manifest|canonical)"[^>]*>\n?/g, '')
   .replace(/<!-- Aperçu quand le lien est partagé[^\n]*\n/, '')
