@@ -4835,41 +4835,54 @@ const SFX = (() => {
     hum.g.gain.setTargetAtTime(0.035 * Math.max(0.2, ratio), ctx.currentTime, 0.05);
   }
   // ---------- Musique : composée à la volée (aucun fichier, aucun droit d'auteur) ----------
-  // Trois ambiances sur la même grille d'accords : « menu » (calme), « jeu » (sautillant), « nid » (tendu).
+  // Style lo-fi détente : accords jazzy au piano électrique doux, basse ronde, percussions feutrées avec
+  // un léger swing, le tout adouci par un filtre et un petit grésillement de vinyle.
+  // Trois ambiances : « menu » (très calme), « jeu » (posé, un peu de rythme), « nid » (plus sombre, toujours doux).
   // La mélodie est tirée au hasard mais rejouée deux fois de suite, puis renouvelée : on reconnaît le thème sans s'en lasser.
+  const CHILL = [[57, 60, 64, 67, 71], [53, 57, 60, 64], [48, 52, 55, 59, 62], [55, 59, 62, 64]]; // Am9 · Fmaj7 · Cmaj9 · G6
   const MUS = {
-    menu: { bpm: 84, prog: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], drums: 0, pad: 1, bass: 'long', lead: 0.35, vol: 0.8 },
-    jeu: { bpm: 112, prog: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], drums: 1, pad: 0, bass: 'rebond', lead: 0.6, vol: 0.75 },
-    nid: { bpm: 126, prog: [[57, 60, 64], [58, 62, 65], [57, 60, 64], [52, 56, 59]], drums: 2, pad: 0, bass: 'galop', lead: 0.5, vol: 0.85 },
+    menu: { bpm: 70, prog: CHILL, drums: 0, lead: 0.22, vol: 0.9 },
+    jeu: { bpm: 80, prog: CHILL, drums: 1, lead: 0.3, vol: 0.85 },
+    nid: { bpm: 86, prog: [[57, 60, 64, 67], [58, 62, 65, 69], [57, 60, 64, 67], [52, 56, 59, 62]], drums: 1, lead: 0.26, vol: 0.9 }, // Am7 · B♭maj7 · Am7 · E7
   };
-  const PENTA = [57, 60, 62, 64, 67, 69, 72, 74, 76, 79];
+  const PENTA = [64, 67, 69, 72, 74, 76, 79];
   const hz = m => 440 * Math.pow(2, (m - 69) / 12);
   let mus = null;
   function seeded(n) { let x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  // Une note de piano électrique : fondamentale douce + une petite harmonique de cloche
+  function keys(m, dur, vol, out, at) {
+    tone(hz(m), dur, { type: 'sine', vol, attack: 0.015, out, at });
+    tone(hz(m) * 2.003, dur * 0.45, { type: 'sine', vol: vol * 0.22, attack: 0.01, out, at });
+  }
   function musStep(t, step) {
     const c = MUS[mus.mode], out = mus.gain;
     const s = step % 16, bar = Math.floor(step / 16) % 4, loop = Math.floor(step / 64);
     const chord = c.prog[bar], root = chord[0], beat = 60 / c.bpm, sx = beat / 4;
-    // Basse
-    if (c.bass === 'long' && (s === 0 || s === 8)) tone(hz(root - 12), beat * 1.8, { type: 'triangle', vol: 0.16, attack: 0.03, out, at: t });
-    if (c.bass === 'rebond' && [0, 3, 6, 8, 11, 14].includes(s)) tone(hz(root - 12 + (s === 6 || s === 14 ? 12 : s === 11 ? 7 : 0)), sx * 1.6, { type: 'triangle', vol: 0.17, out, at: t });
-    if (c.bass === 'galop' && s % 2 === 0) tone(hz(root - 12 + (s % 8 === 6 ? 7 : 0)), sx * 1.4, { type: 'sawtooth', vol: 0.06, out, at: t });
-    // Nappe douce (menu)
-    if (c.pad && s === 0) chord.forEach(n => tone(hz(n), beat * 3.8, { type: 'sine', vol: 0.035, attack: 0.4, out, at: t }));
-    // Percussions
+    const swing = s % 4 === 2 ? sx * 0.33 : 0; // les croches « balancent » un peu
+    const at = t + swing;
+    // Accords : posés au début de la mesure (et rappelés doucement à la moitié en partie)
+    if (s === 0) chord.forEach((n, i) => keys(n, beat * 3.6, 0.03, out, t + i * 0.012)); // léger arpège, comme une main sur le clavier
+    if (c.drums && s === 10) chord.slice(1).forEach(n => keys(n, beat * 1.4, 0.016, out, at));
+    // Basse ronde
+    if (s === 0) tone(hz(root - 12), beat * 1.9, { type: 'sine', vol: 0.2, attack: 0.02, out, at: t });
+    if (c.drums && s === 10) tone(hz(root - 12 + 7), beat * 1.2, { type: 'sine', vol: 0.13, attack: 0.02, out, at });
+    // Percussions feutrées
     if (c.drums) {
-      if (s === 0 || s === 8 || (c.drums > 1 && (s === 10 || s === 14))) tone(110, 0.16, { type: 'sine', vol: 0.32, slide: 0.35, out, at: t });
-      if (s === 4 || s === 12) noise(0.11, { vol: 0.09, freq: 1900, type: 'bandpass', q: 0.8, out, at: t });
-      if (s % 2 === 0) noise(0.03, { vol: s % 4 === 2 ? 0.045 : 0.025, freq: 8000, type: 'highpass', out, at: t });
+      if (s === 0 || s === 10) tone(85, 0.22, { type: 'sine', vol: 0.16, slide: 0.55, out, at });
+      if (s === 8) noise(0.05, { vol: 0.035, freq: 2400, type: 'bandpass', q: 5, out, at }); // petit coup de baguette sur le bord
+      if (s % 2 === 0) noise(0.04, { vol: s % 4 === 2 ? 0.014 : 0.009, freq: 7000, type: 'highpass', out, at }); // shaker
     }
-    // Mélodie pincée
-    const seed = (Math.floor(loop / 2) % 4) * 64 + bar * 16 + s;
-    const strong = s % 4 === 0;
-    if (seeded(seed) < c.lead * (strong ? 1 : 0.45)) {
-      const pool = PENTA.filter(n => chord.some(cn => (n - cn) % 12 === 0) || !strong);
-      const n = pool[Math.floor(seeded(seed + 0.5) * pool.length)];
-      tone(hz(n + 12), sx * (strong ? 2.2 : 1.3), { type: 'square', vol: 0.028, out, at: t });
-      tone(hz(n + 12) * 1.004, sx * (strong ? 2.2 : 1.3), { type: 'triangle', vol: 0.05, out, at: t });
+    // Grésillement de vinyle, très discret
+    if (seeded(step * 3.7 + loop) < 0.18) noise(0.008, { vol: 0.012, freq: 3500, type: 'highpass', out, at: t + seeded(step) * sx });
+    // Mélodie : quelques notes posées, jamais pressées
+    if (s % 2 === 0) {
+      const seed = (Math.floor(loop / 2) % 4) * 64 + bar * 16 + s;
+      const strong = s % 8 === 0;
+      if (seeded(seed) < c.lead * (strong ? 1.6 : 0.7)) {
+        const pool = PENTA.filter(n => !strong || chord.some(cn => (n - cn) % 12 === 0));
+        const n = pool[Math.floor(seeded(seed + 0.5) * pool.length)];
+        tone(hz(n), sx * (strong ? 5 : 3), { type: 'triangle', vol: 0.035, attack: 0.03, out, at });
+      }
     }
   }
   function musTick() {
@@ -4878,7 +4891,7 @@ const SFX = (() => {
       // on ne change d'ambiance qu'en début de mesure, pour que la transition tombe juste
       if (mus.step % 16 === 0 && mus.want !== mus.mode) {
         mus.mode = mus.want; mus.step = 0;
-        mus.gain.gain.setTargetAtTime(0.2 * MUS[mus.mode].vol, mus.next, 0.4);
+        mus.gain.gain.setTargetAtTime(0.2 * MUS[mus.mode].vol, mus.next, 0.6);
       }
       musStep(mus.next, mus.step);
       mus.next += 60 / MUS[mus.mode].bpm / 4;
@@ -4888,19 +4901,19 @@ const SFX = (() => {
   function music(mode) {
     const want = ctx && state.settings?.sound !== false && state.settings?.music !== false && document.visibilityState === 'visible';
     if (!want) {
-      if (mus) { mus.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.15); clearInterval(mus.timer); const g = mus.gain; setTimeout(() => g.disconnect(), 800); mus = null; }
+      if (mus) { mus.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.15); clearInterval(mus.timer); const g = mus.gain, f = mus.filt; setTimeout(() => { g.disconnect(); f.disconnect(); }, 800); mus = null; }
       return;
     }
     if (!mus) {
-      const gain = ctx.createGain();
+      const gain = ctx.createGain(), filt = ctx.createBiquadFilter();
       gain.gain.value = 0;
-      gain.connect(master);
-      mus = { gain, mode, want: mode, step: 0, next: ctx.currentTime + 0.1, timer: setInterval(musTick, 60) };
-      gain.gain.setTargetAtTime(0.2 * MUS[mode].vol, ctx.currentTime, 0.8);
+      filt.type = 'lowpass'; filt.frequency.value = 1900; filt.Q.value = 0.5; // son chaud et feutré
+      gain.connect(filt); filt.connect(master);
+      mus = { gain, filt, mode, want: mode, step: 0, next: ctx.currentTime + 0.1, timer: setInterval(musTick, 60) };
+      gain.gain.setTargetAtTime(0.2 * MUS[mode].vol, ctx.currentTime, 1.2);
     }
     mus.want = mode;
   }
-
   // Couper / remettre le son (quand l'application passe en arrière-plan)
   function suspend(on) { if (!ctx) return; try { if (on) ctx.suspend(); else ctx.resume(); } catch { /* sans gravité */ } }
   return { init, play, spin, suspend, music };
@@ -7150,7 +7163,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-09.1';
+const VERSION = '2026-11-09.2';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
