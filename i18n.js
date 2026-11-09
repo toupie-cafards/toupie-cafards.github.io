@@ -866,4 +866,6 @@ export const I18N = {
 "Essaie Toupie contre Cafards : lance ta toupie et écrase l’invasion de cafards 🌀🪳 Gratuit, sans pub, dans le navigateur.": ["Try Spinning Top vs Roaches: launch your top and crush the cockroach invasion 🌀🪳 Free, no ads, in your browser.","Prueba Peonza contra Cucarachas: lanza tu peonza y aplasta la invasión de cucarachas 🌀🪳 Gratis, sin anuncios, en el navegador.","Probier Kreisel gegen Kakerlaken: Wirf deinen Kreisel und zerquetsche die Kakerlakeninvasion 🌀🪳 Kostenlos, ohne Werbung, im Browser."],
 "🎵 Musique : activée": ["🎵 Music: on","🎵 Música: activada","🎵 Musik: an"],
 "🎵 Musique : coupée": ["🎵 Music: off","🎵 Música: desactivada","🎵 Musik: aus"],
+"niv. {0} / {1}": ["lvl {0} / {1}","nv. {0} / {1}","St. {0} / {1}"],
+"✨ Niv. {0} : {1}": ["✨ Lvl {0}: {1}","✨ Nv. {0}: {1}","✨ St. {0}: {1}"],
 };

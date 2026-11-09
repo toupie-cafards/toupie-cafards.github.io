@@ -169,6 +169,31 @@
     font-weight: 800; font-size: 14px; cursor: pointer; background: var(--gold); color: #1a1410; font-variant-numeric: tabular-nums; }
   .card button:disabled { background: rgba(255,255,255,.12); color: var(--muted); cursor: default; }
   .card.locked { opacity: .55; }
+  /* Atelier : une carte par amélioration — illustration, niveau en barre, effet, prix */
+  .upgCard { grid-template-columns: 50px 1fr auto; gap: 0 12px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.06);
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015)), var(--panel-2); transition: border-color .25s, box-shadow .25s; }
+  .upgCard.can { border-color: rgba(255,212,90,.55); box-shadow: 0 0 0 1px rgba(255,212,90,.12), 0 4px 14px rgba(255,180,60,.12); }
+  .upgCard .upgIco { grid-row: 1; grid-column: 1; align-self: start; width: 50px; height: 50px; border-radius: 13px; display: grid; place-items: center;
+    background: radial-gradient(circle at 35% 30%, #fff3d6, #f2c46e 70%, #d89a3c); box-shadow: inset 0 -3px 0 rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.35); }
+  .upgCard .upgIco .ic { width: 34px; height: 34px; vertical-align: 0; }
+  .upgCard .upgIco .emo { font-size: 28px; line-height: 1; }
+  .upgCard .upgBody { grid-column: 2; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .upgCard .upgHead { display: flex; align-items: baseline; gap: 6px; }
+  .upgCard .name { font-size: 15px; }
+  .upgCard .lvl { margin-left: auto; font-size: 11px; white-space: nowrap; }
+  .upgCard .lvlBar { height: 5px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .upgCard .lvlBar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #ffb36a, #ffd45a); transition: width .35s ease-out; }
+  .upgCard .val { align-self: flex-start; display: inline-flex; flex-wrap: wrap; gap: 0 5px; align-items: baseline; background: rgba(0,0,0,.25); border-radius: 7px; padding: 2px 8px; }
+  .upgCard .val .cur { color: var(--muted); }
+  .upgCard .skin { color: #f3a7d8; }
+  .upgCard button { grid-row: 1; grid-column: 3; align-self: center; }
+  .upgCard.maxed .upgIco { background: radial-gradient(circle at 35% 30%, #fffbe8, #ffd45a 70%, #e0a92a); box-shadow: inset 0 -3px 0 rgba(0,0,0,.18), 0 0 12px rgba(255,212,90,.45); }
+  .upgCard.maxed button:disabled { background: transparent; border: 2px solid var(--gold); color: var(--gold); }
+  .upgCard.locked .upgIco { filter: grayscale(1) brightness(.8); }
+  .upgCard.bought { animation: upgPop .45s ease-out; }
+  .upgCard.bought .upgIco { animation: upgIcoPop .5s ease-out; }
+  @keyframes upgPop { 30% { transform: scale(1.025); box-shadow: 0 0 0 2px var(--gold), 0 0 24px rgba(255,212,90,.45); } }
+  @keyframes upgIcoPop { 30% { transform: rotate(-12deg) scale(1.15); } }
   .statRow { display: flex; justify-content: space-between; gap: 10px; padding: 6px 2px; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 14px; }
   .statRow span:last-child { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
   .statTitle { margin: 14px 0 4px; color: var(--accent); font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
@@ -802,7 +827,7 @@ const SAVE_KEY = TEST_MODE ? 'toupie-cafards-test-' + TEST_MODE : 'toupie-cafard
 //  remplacent tous les émojis du jeu (menus, améliorations, succès, dialogues, notifications…).
 //  Un dessin vectoriel 32×32 par icône, même style partout : contour brun foncé, couleurs franches.
 // =====================================================================
-const ICON_STYLE = new URLSearchParams(location.search).get('style') === 'icones';
+const ICON_STYLE = new URLSearchParams(location.search).get('style') !== 'emoji'; // icônes dessinées (les émojis restent avec ?style=emoji)
 const ICO_FACE = (extra) => '<circle cx="16" cy="17" r="12" fill="#f6d2a8"/>' +
   '<path d="M4.5 15C5 8 10 4.5 16 4.5S27 8 27.5 15c-3-3-7-4.5-11.5-4.5S7.5 12 4.5 15z" fill="#8b5a33"/>' + extra;
 const ICO_MEDAL = (col) => '<path d="M8 2h6l3 10h-6zM24 2h-6l-3 10h6z" fill="#e2483d"/><circle cx="16" cy="20" r="9" fill="' + col + '"/>' +
@@ -6809,8 +6834,8 @@ function shareReward() {
   if (menuEl.classList.contains('open')) openMenuRefresh();
 }
 async function shareChallenge(text, btn, kind) {
-  const label = btn.textContent;
-  const done = msg => { btn.textContent = msg; setTimeout(() => { btn.textContent = label; }, 2500); };
+  const label = btn.innerHTML;
+  const done = msg => { btn.textContent = msg; setTimeout(() => { btn.innerHTML = label; }, 2500); };
   const url = shareLink(kind);
   if (navigator.share) {
     let data = { title: T('Toupie contre Cafards'), text, url };
@@ -7163,7 +7188,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-09.2';
+const VERSION = '2026-11-09.3';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -7890,12 +7915,14 @@ function upgradeLock(u) {
   return null;
 }
 
+let lastBought = { id: '', t: 0 };
 function buy(u) {
   const c = costOf(u);
   if (state.run.cash < c || lv(u.id) >= u.max || upgradeLock(u)) return;
   const before = u.skins ? skinTier(u.id) : 0;
   state.run.cash -= c;
   state.run.levels[u.id] = lv(u.id) + 1;
+  lastBought = { id: u.id, t: performance.now() };
   refreshStats();
   updateLauncherSkin();
   if (u.id === 'prime') for (const b of bugs) if (b.mode !== 'hungry' && !b.golden) applyPrimeGlow(b.mat, b.t);
@@ -7963,46 +7990,60 @@ function renderShop() {
   }
   for (const u of UPGRADES.filter(u => u.tab === currentTab && (!u.modes || u.modes.includes(state.run.mode)) && (TEST_MODE === 'riche' || (u.stage || 0) <= stageSeen() + 1))) {
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'card upgCard';
     const lockReason = upgradeLock(u);
     const locked = !!lockReason;
     const level = lv(u.id), maxed = level >= u.max;
-    const name = document.createElement('div');
-    name.innerHTML = `<span class="name"></span><span class="lvl"></span>`;
-    name.querySelector('.name').textContent = u.name;
-    name.querySelector('.lvl').textContent = maxed ? 'MAX' : T(`niv. {0}`, level);
-    if (ICON_STYLE && UPGRADE_ICON[u.id]) name.prepend(iconEl(UPGRADE_ICON[u.id], 'upg'));
+    // Illustration
+    const ico = document.createElement('div');
+    ico.className = 'upgIco';
+    if (ICON_STYLE && UPGRADE_ICON[u.id]) ico.append(iconEl(UPGRADE_ICON[u.id]));
+    else { const e = document.createElement('span'); e.className = 'emo'; e.textContent = (u.name.match(EMO_RE) || ['🌀'])[0]; ico.append(e); }
+    // Nom + niveau, puis la barre de progression
+    const body = document.createElement('div');
+    body.className = 'upgBody';
+    const head = document.createElement('div');
+    head.className = 'upgHead';
+    head.innerHTML = '<span class="name"></span><span class="lvl"></span>';
+    head.querySelector('.name').textContent = u.name;
+    head.querySelector('.lvl').textContent = maxed ? 'MAX' : T('niv. {0} / {1}', level, u.max);
+    body.append(head);
     const desc = document.createElement('div');
     desc.className = 'desc';
     desc.textContent = locked ? `🔒 ${lockReason}` : u.desc;
-    const val = document.createElement('div');
-    val.className = 'val';
-    const skin = document.createElement('div');
-    skin.className = 'skin';
     const btn = document.createElement('button');
     if (locked) {
       card.classList.add('locked');
+      body.append(desc);
       btn.textContent = '🔒';
       btn.disabled = true;
     } else {
+      const bar = document.createElement('div');
+      bar.className = 'lvlBar';
+      bar.innerHTML = '<i></i>';
+      bar.firstChild.style.width = Math.round(100 * level / u.max) + '%';
+      body.append(bar, desc);
+      // L'effet : valeur actuelle → valeur au prochain niveau
       const next = computeStats(id => lv(id) + (id === u.id ? 1 : 0));
-      val.textContent = u.fmt(S);
+      const val = document.createElement('div');
+      val.className = 'val';
+      const cur = document.createElement('span');
+      cur.className = 'cur';
+      cur.textContent = u.fmt(S);
+      val.append(cur);
       if (!maxed) {
-        val.append(' → ');
         const b = document.createElement('b');
         b.textContent = u.fmt(next);
-        val.append(b);
+        val.append('→', b);
       }
-      if (u.skins || UPGRADE_DETAIL[u.id]) {
-        // Ce que montre la pièce maintenant, et ce que le prochain niveau va changer
-        const det = UPGRADE_DETAIL[u.id]?.(level) || '';
-        const cur = u.skins ? u.skins[skinTier(u.id)][1] : '';
-        let nextTxt = '';
-        if (!maxed) {
-          const t0 = tierAt(u.id, level).t, t1 = tierAt(u.id, level + 1).t;
-          nextTxt = u.skins && t1 > t0 ? `✨ ${u.skins[t1][1]}` : (UPGRADE_DETAIL[u.id]?.(level + 1) || '');
-        }
-        skin.textContent = '🎨 ' + [cur, det].filter(Boolean).join(' · ') + (maxed ? T(' · au maximum') : nextTxt ? T(` → niv. {0} : {1}`, level + 1, nextTxt) : '');
+      body.append(val);
+      // Le prochain changement d'apparence (s'il y en a un), pour donner envie
+      const nt = !maxed && u.skins ? u.skins.find(([l]) => l > level && l <= u.max) : null;
+      if (nt) {
+        const skin = document.createElement('div');
+        skin.className = 'desc skin';
+        skin.textContent = T('✨ Niv. {0} : {1}', nt[0], nt[1]);
+        body.append(skin);
       }
       // En mode ×5 / Max : le prix affiché est celui de tous les niveaux qu'on peut s'offrir d'un coup
       const lot = lotOf(u);
@@ -8010,9 +8051,11 @@ function renderShop() {
       btn.dataset.cost = maxed ? '' : costOf(u);
       btn.disabled = maxed || state.run.cash < costOf(u);
       btn.onclick = () => { const n = lotOf(u).n || 1; for (let i = 0; i < n; i++) buy(u); };
+      if (maxed) card.classList.add('maxed');
+      else if (!btn.disabled) card.classList.add('can');
+      if (lastBought.id === u.id && performance.now() - lastBought.t < 600) card.classList.add('bought');
     }
-    card.append(name, btn, desc, val);
-    if (skin.textContent) card.append(skin);
+    card.append(ico, body, btn);
     shopList.appendChild(card);
   }
 }
@@ -8121,6 +8164,7 @@ function updateHud() {
   for (const btn of shopList.querySelectorAll('button[data-cost]')) {
     if (btn.dataset.cost === '') continue;
     btn.disabled = state.run.cash < Number(btn.dataset.cost);
+    btn.parentElement.classList.toggle('can', !btn.disabled);
   }
   if (buyMode > 1 && shopEl.classList.contains('open')) { lotRefresh = (lotRefresh || 0) + 1; if (lotRefresh % 4 === 0) shopDirty = true; }
   for (const u of UPGRADES) {
