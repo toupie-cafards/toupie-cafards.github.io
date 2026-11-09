@@ -624,6 +624,7 @@
     </button>
     <div class="settingsRow">
       <button class="linkBtn" id="soundBtn"></button>
+      <button class="linkBtn" id="musicBtn"></button>
       <button class="linkBtn" id="vibBtn"></button>
     </div>
   </div>
@@ -1383,7 +1384,7 @@ function load() {
     }
   } catch { /* pas de sauvegarde, ou stockage bloqué */ }
   state.meta = Object.assign({ earned: 0, spent: 0, items: {} }, state.meta);
-  state.settings = Object.assign({ sound: true, vibrate: true }, state.settings);
+  state.settings = Object.assign({ sound: true, vibrate: true, music: true }, state.settings);
   state.achievements = state.achievements || {};
   state.maxStage = Math.max(state.maxStage || 0, state.savedRuns.histoire.stageSeen || 0, state.savedRuns.carnage.stageSeen || 0);
   // Les punaises au sol n'existent plus : on rend les 🌊 dépensées
@@ -4716,8 +4717,8 @@ const SFX = (() => {
   }
   const on = () => ctx && state.settings?.sound !== false;
   function tone(freq, dur, o = {}) {
-    const { type = 'sine', vol = 0.2, slide = 0, delay = 0, attack = 0.004 } = o;
-    const t0 = ctx.currentTime + delay;
+    const { type = 'sine', vol = 0.2, slide = 0, delay = 0, attack = 0.004, out = master, at = 0 } = o;
+    const t0 = (at || ctx.currentTime) + delay;
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(freq, t0);
@@ -4725,18 +4726,18 @@ const SFX = (() => {
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(vol, t0 + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(g); g.connect(master);
+    osc.connect(g); g.connect(out);
     osc.start(t0); osc.stop(t0 + dur + 0.02);
   }
   let noiseBuf = null;
   function noise(dur, o = {}) {
-    const { vol = 0.2, freq = 1500, q = 1, delay = 0, type = 'lowpass', sweep = 0 } = o;
+    const { vol = 0.2, freq = 1500, q = 1, delay = 0, type = 'lowpass', sweep = 0, out = master, at = 0 } = o;
     if (!noiseBuf) {
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.6, ctx.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
-    const t0 = ctx.currentTime + delay;
+    const t0 = (at || ctx.currentTime) + delay;
     const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
     src.buffer = noiseBuf;
     f.type = type; f.Q.value = q;
@@ -4744,25 +4745,55 @@ const SFX = (() => {
     if (sweep) f.frequency.exponentialRampToValueAtTime(freq * sweep, t0 + dur);
     g.gain.setValueAtTime(vol, t0);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(f); f.connect(g); g.connect(master);
+    src.connect(f); f.connect(g); g.connect(out);
     src.start(t0); src.stop(t0 + dur + 0.02);
   }
   const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24, 26, 28, 31];
+  const rp = () => 0.93 + Math.random() * 0.14; // petite variation de hauteur
   const SOUNDS = {
-    launch(power) { noise(0.32, { vol: 0.25, freq: 500, sweep: 5, type: 'bandpass', q: 2 }); tone(180, 0.3, { type: 'triangle', vol: 0.12, slide: 2.5 + power }); },
-    hit(size) { tone(170 - 90 * size, 0.09, { type: 'sine', vol: 0.22, slide: 0.5 }); noise(0.04, { vol: 0.12, freq: 2500 }); },
+    launch(power) {
+      // la ficelle qu'on tire (crrrr) puis la toupie qui part (fiouu)
+      for (let i = 0; i < 7; i++) noise(0.014, { vol: 0.12, freq: 4200, type: 'highpass', delay: i * (0.034 - i * 0.0035) });
+      noise(0.34, { vol: 0.24, freq: 500, sweep: 5, type: 'bandpass', q: 2, delay: 0.16 });
+      tone(180 * rp(), 0.32, { type: 'triangle', vol: 0.12, slide: 2.5 + power, delay: 0.16 });
+    },
+    hit(size) {
+      // « toc » de bois de la toupie qui cogne
+      const p = rp();
+      tone((900 - 380 * size) * p, 0.05, { type: 'triangle', vol: 0.15, slide: 0.55 });
+      tone((170 - 90 * size) * p, 0.09, { type: 'sine', vol: 0.18, slide: 0.5 });
+      noise(0.035, { vol: 0.1, freq: 2600, type: 'bandpass', q: 3 });
+    },
     crit() { tone(1320, 0.18, { type: 'triangle', vol: 0.16 }); tone(1980, 0.22, { type: 'sine', vol: 0.1, delay: 0.03 }); },
-    kill(size) { noise(0.13 + size * 0.1, { vol: 0.22 + size * 0.1, freq: 1100 - size * 500, sweep: 0.4 }); tone(320 - 160 * size, 0.12, { type: 'square', vol: 0.05, slide: 0.35 }); },
+    kill(size) {
+      // « scrountch » : la carapace qui craque puis le corps qui s'écrase
+      const p = rp();
+      noise(0.025, { vol: 0.16 + size * 0.06, freq: 5200 * p, type: 'highpass' });
+      noise(0.14 + size * 0.12, { vol: 0.24 + size * 0.1, freq: (1900 - size * 700) * p, sweep: 0.18, type: 'bandpass', q: 1.6, delay: 0.012 });
+      tone((420 - 200 * size) * p, 0.13, { type: 'square', vol: 0.045, slide: 0.3, delay: 0.01 });
+      if (size > 0.5) tone(70, 0.18, { type: 'sine', vol: 0.18, slide: 0.6, delay: 0.02 });
+    },
     combo(n) { const st = SCALE[Math.min(SCALE.length - 1, n - 3)]; tone(523 * Math.pow(2, st / 12), 0.16, { type: 'triangle', vol: 0.13 }); },
     perfect() { [660, 880, 1320].forEach((f, i) => tone(f, 0.2, { type: 'triangle', vol: 0.13, delay: i * 0.06 })); },
     wave() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i === 3 ? 0.45 : 0.16, { type: 'square', vol: 0.07, delay: i * 0.11 })); },
     defeat() { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.35, { type: 'sawtooth', vol: 0.06, delay: i * 0.2, slide: 0.97 })); },
-    buy() { tone(988, 0.08, { type: 'square', vol: 0.07 }); tone(1319, 0.25, { type: 'square', vol: 0.07, delay: 0.07 }); },
+    buy() {
+      // « ka-tching » de tiroir-caisse
+      noise(0.05, { vol: 0.1, freq: 3000, type: 'bandpass', q: 2 });
+      tone(988, 0.07, { type: 'square', vol: 0.06, delay: 0.03 });
+      tone(1976, 0.3, { type: 'triangle', vol: 0.09, delay: 0.09 });
+      tone(2637, 0.35, { type: 'sine', vol: 0.05, delay: 0.11 });
+    },
     evolve() { [523, 784, 1047, 1568, 2093].forEach((f, i) => tone(f, 0.25, { type: 'triangle', vol: 0.1, delay: i * 0.07 })); },
     level() { tone(440, 0.18, { type: 'square', vol: 0.06 }); tone(330, 0.3, { type: 'square', vol: 0.06, delay: 0.18 }); },
     mutation() { for (let i = 0; i < 6; i++) tone(200 + 80 * Math.sin(i), 0.25, { type: 'sawtooth', vol: 0.05, delay: i * 0.09, slide: 1.4 }); },
     boing() { tone(220, 0.22, { type: 'sine', vol: 0.15, slide: 2.6 }); },
-    fall() { noise(0.15, { vol: 0.12, freq: 3000, type: 'highpass' }); tone(300, 0.18, { type: 'triangle', vol: 0.08, slide: 0.4 }); },
+    fall() {
+      // la toupie qui vacille… et se couche (cloc)
+      for (let i = 0; i < 3; i++) tone(260 - i * 40, 0.09, { type: 'triangle', vol: 0.06, slide: 0.8, delay: i * 0.08 });
+      noise(0.08, { vol: 0.14, freq: 900, type: 'bandpass', q: 2, delay: 0.25 });
+      tone(140, 0.12, { type: 'sine', vol: 0.12, slide: 0.6, delay: 0.25 });
+    },
     pick() { tone(500, 0.12, { type: 'sine', vol: 0.14, slide: 2 }); },
     achieve() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.3, { type: 'triangle', vol: 0.12, delay: i * 0.09 })); },
     step() { noise(0.09, { vol: 0.16, freq: 320 }); tone(75, 0.1, { type: 'sine', vol: 0.12, slide: 0.7 }); },
@@ -4803,9 +4834,76 @@ const SFX = (() => {
     hum.f.frequency.setTargetAtTime(300 + 900 * ratio, ctx.currentTime, 0.05);
     hum.g.gain.setTargetAtTime(0.035 * Math.max(0.2, ratio), ctx.currentTime, 0.05);
   }
+  // ---------- Musique : composée à la volée (aucun fichier, aucun droit d'auteur) ----------
+  // Trois ambiances sur la même grille d'accords : « menu » (calme), « jeu » (sautillant), « nid » (tendu).
+  // La mélodie est tirée au hasard mais rejouée deux fois de suite, puis renouvelée : on reconnaît le thème sans s'en lasser.
+  const MUS = {
+    menu: { bpm: 84, prog: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], drums: 0, pad: 1, bass: 'long', lead: 0.35, vol: 0.8 },
+    jeu: { bpm: 112, prog: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], drums: 1, pad: 0, bass: 'rebond', lead: 0.6, vol: 0.75 },
+    nid: { bpm: 126, prog: [[57, 60, 64], [58, 62, 65], [57, 60, 64], [52, 56, 59]], drums: 2, pad: 0, bass: 'galop', lead: 0.5, vol: 0.85 },
+  };
+  const PENTA = [57, 60, 62, 64, 67, 69, 72, 74, 76, 79];
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  let mus = null;
+  function seeded(n) { let x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  function musStep(t, step) {
+    const c = MUS[mus.mode], out = mus.gain;
+    const s = step % 16, bar = Math.floor(step / 16) % 4, loop = Math.floor(step / 64);
+    const chord = c.prog[bar], root = chord[0], beat = 60 / c.bpm, sx = beat / 4;
+    // Basse
+    if (c.bass === 'long' && (s === 0 || s === 8)) tone(hz(root - 12), beat * 1.8, { type: 'triangle', vol: 0.16, attack: 0.03, out, at: t });
+    if (c.bass === 'rebond' && [0, 3, 6, 8, 11, 14].includes(s)) tone(hz(root - 12 + (s === 6 || s === 14 ? 12 : s === 11 ? 7 : 0)), sx * 1.6, { type: 'triangle', vol: 0.17, out, at: t });
+    if (c.bass === 'galop' && s % 2 === 0) tone(hz(root - 12 + (s % 8 === 6 ? 7 : 0)), sx * 1.4, { type: 'sawtooth', vol: 0.06, out, at: t });
+    // Nappe douce (menu)
+    if (c.pad && s === 0) chord.forEach(n => tone(hz(n), beat * 3.8, { type: 'sine', vol: 0.035, attack: 0.4, out, at: t }));
+    // Percussions
+    if (c.drums) {
+      if (s === 0 || s === 8 || (c.drums > 1 && (s === 10 || s === 14))) tone(110, 0.16, { type: 'sine', vol: 0.32, slide: 0.35, out, at: t });
+      if (s === 4 || s === 12) noise(0.11, { vol: 0.09, freq: 1900, type: 'bandpass', q: 0.8, out, at: t });
+      if (s % 2 === 0) noise(0.03, { vol: s % 4 === 2 ? 0.045 : 0.025, freq: 8000, type: 'highpass', out, at: t });
+    }
+    // Mélodie pincée
+    const seed = (Math.floor(loop / 2) % 4) * 64 + bar * 16 + s;
+    const strong = s % 4 === 0;
+    if (seeded(seed) < c.lead * (strong ? 1 : 0.45)) {
+      const pool = PENTA.filter(n => chord.some(cn => (n - cn) % 12 === 0) || !strong);
+      const n = pool[Math.floor(seeded(seed + 0.5) * pool.length)];
+      tone(hz(n + 12), sx * (strong ? 2.2 : 1.3), { type: 'square', vol: 0.028, out, at: t });
+      tone(hz(n + 12) * 1.004, sx * (strong ? 2.2 : 1.3), { type: 'triangle', vol: 0.05, out, at: t });
+    }
+  }
+  function musTick() {
+    if (!mus || !ctx) return;
+    while (mus.next < ctx.currentTime + 0.25) {
+      // on ne change d'ambiance qu'en début de mesure, pour que la transition tombe juste
+      if (mus.step % 16 === 0 && mus.want !== mus.mode) {
+        mus.mode = mus.want; mus.step = 0;
+        mus.gain.gain.setTargetAtTime(0.2 * MUS[mus.mode].vol, mus.next, 0.4);
+      }
+      musStep(mus.next, mus.step);
+      mus.next += 60 / MUS[mus.mode].bpm / 4;
+      mus.step++;
+    }
+  }
+  function music(mode) {
+    const want = ctx && state.settings?.sound !== false && state.settings?.music !== false && document.visibilityState === 'visible';
+    if (!want) {
+      if (mus) { mus.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.15); clearInterval(mus.timer); const g = mus.gain; setTimeout(() => g.disconnect(), 800); mus = null; }
+      return;
+    }
+    if (!mus) {
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(master);
+      mus = { gain, mode, want: mode, step: 0, next: ctx.currentTime + 0.1, timer: setInterval(musTick, 60) };
+      gain.gain.setTargetAtTime(0.2 * MUS[mode].vol, ctx.currentTime, 0.8);
+    }
+    mus.want = mode;
+  }
+
   // Couper / remettre le son (quand l'application passe en arrière-plan)
   function suspend(on) { if (!ctx) return; try { if (on) ctx.suspend(); else ctx.resume(); } catch { /* sans gravité */ } }
-  return { init, play, spin, suspend };
+  return { init, play, spin, suspend, music };
 })();
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => SFX.init(), { passive: true }));
 function buzz(ms) {
@@ -6954,9 +7052,11 @@ document.getElementById('achBtn').onclick = () => { renderAchievements(); docume
 document.getElementById('achClose').onclick = () => { document.getElementById('achPanel').classList.remove('open'); updateAchCount(); openMenuRefresh(); };
 function updateSettingsBtns() {
   document.getElementById('soundBtn').textContent = state.settings.sound !== false ? T('🔊 Son : activé') : T('🔇 Son : coupé');
+  document.getElementById('musicBtn').textContent = state.settings.music !== false ? T('🎵 Musique : activée') : T('🎵 Musique : coupée');
   document.getElementById('vibBtn').textContent = state.settings.vibrate !== false ? T('📳 Vibrations : activées') : T('📴 Vibrations : coupées');
 }
 document.getElementById('soundBtn').onclick = () => { state.settings.sound = state.settings.sound === false; updateSettingsBtns(); SFX.init(); SFX.play('buy'); save(); };
+document.getElementById('musicBtn').onclick = () => { state.settings.music = state.settings.music === false; updateSettingsBtns(); SFX.init(); save(); };
 document.getElementById('vibBtn').onclick = () => { state.settings.vibrate = state.settings.vibrate === false; updateSettingsBtns(); buzz(30); save(); };
 document.getElementById('toyClose').onclick = () => {
   toyboxEl.classList.remove('open');
@@ -7050,7 +7150,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-08.2';
+const VERSION = '2026-11-09.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -8054,6 +8154,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   if (ON_CG) cgGameplay(!paused && !cr && !menuEl.classList.contains('open') && document.visibilityState === 'visible');
+  SFX.music(cr || menuEl.classList.contains('open') ? 'menu' : nest ? 'nid' : 'jeu');
   canvasRect = null; // re-mesurée au premier texte flottant de cette image
   // La montre du Carton à Jouets : tout le jeu tourne deux fois plus vite
   if (!paused) update(dt * gameSpeed());

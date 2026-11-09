@@ -864,4 +864,6 @@ export const I18N = {
 "Mode Histoire": ["Story Mode","Modo Historia","Story-Modus"],
 "🎁 Merci pour le partage ! +3 🌊 pour le Carton à Jouets": ["🎁 Thanks for sharing! +3 🌊 for the Toy Box","🎁 ¡Gracias por compartir! +3 🌊 para la Caja de Juguetes","🎁 Danke fürs Teilen! +3 🌊 für die Spielzeugkiste"],
 "Essaie Toupie contre Cafards : lance ta toupie et écrase l’invasion de cafards 🌀🪳 Gratuit, sans pub, dans le navigateur.": ["Try Spinning Top vs Roaches: launch your top and crush the cockroach invasion 🌀🪳 Free, no ads, in your browser.","Prueba Peonza contra Cucarachas: lanza tu peonza y aplasta la invasión de cucarachas 🌀🪳 Gratis, sin anuncios, en el navegador.","Probier Kreisel gegen Kakerlaken: Wirf deinen Kreisel und zerquetsche die Kakerlakeninvasion 🌀🪳 Kostenlos, ohne Werbung, im Browser."],
+"🎵 Musique : activée": ["🎵 Music: on","🎵 Música: activada","🎵 Musik: an"],
+"🎵 Musique : coupée": ["🎵 Music: off","🎵 Música: desactivada","🎵 Musik: aus"],
 };
