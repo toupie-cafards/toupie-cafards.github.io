@@ -1068,14 +1068,12 @@ const WAVE_LEN = 40;           // durée d'une vague (s)
 const SNACK_MAX = 20;          // bouchées du goûter au début d'une partie
 
 // L'introduction du mode Histoire (le personnage parle à la première personne)
+// Intro courte : 3 bulles qui défilent toutes seules (toucher pour accélérer). Le geste du lancer est
+// ensuite montré par la main animée du tutoriel : pas besoin de l'expliquer ici.
 const INTRO = [
-  { face: '😩', text: T('Pfff… J’arrive définitivement pas à me débarrasser de ces cafards.') },
-  { face: '😤', text: T('Il y en a partout sur mon bureau. J’ai tout essayé : le spray, les pièges, la chaussure…') },
-  { face: '🤔', text: T('Attends… Qu’est-ce qu’il y a au fond de mon vieux carton de jouets ?') },
-  { face: '😮', text: T('Ma vieille toupie ! Heureusement que je l’ai retrouvée.'), showTop: true },
-  { face: '😏', text: T('Bon. À nous deux, les cafards. Je vais vous repousser, vague après vague.') },
-  { face: '🎯', text: T('À chaque vague, je dois en écraser un certain nombre avant d’être à court de lancers. Sinon, ils envahissent tout.') },
-  { face: '😌', text: T('Je me souviens encore comment il faut la lancer… On vise, et on lâche quand la barre est pleine. Allez, premier lancer !') },
+  { face: '😤', text: T('Mon bureau est envahi de cafards ! J’ai tout essayé : le spray, les pièges, la chaussure…') },
+  { face: '😮', text: T('Attends… Ma vieille toupie ! Ils vont voir.'), showTop: true },
+  { face: '😏', text: T('À chaque vague, j’en écrase assez avant d’être à court de lancers. À moi de jouer !') },
 ];
 
 // =====================================================================
@@ -6330,6 +6328,7 @@ function stepBug(b, dt) {
 //  VAGUES, BONUS ET DÉFAITE
 // =====================================================================
 let paused = true;      // en pause tant que le menu, une fenêtre ou l'intro est ouverte
+let introTimer = 0;      // défilement automatique de l'intro
 let introStep = -1;     // étape de l'introduction en cours (-1 = pas d'intro)
 const modal = document.getElementById('modal'), modalBox = document.getElementById('modalBox');
 
@@ -6657,6 +6656,8 @@ function startIntro() {
 }
 function showIntroLine() {
   const l = dialogLines[introStep];
+  clearTimeout(introTimer);
+  if (dialogLines === INTRO) introTimer = setTimeout(nextIntroLine, Math.max(2600, l.text.length * 55));
   dialogFace.textContent = l.face;
   dialogLine.textContent = l.text;
   if (l.showTop && !introTop) {
@@ -6671,6 +6672,7 @@ function nextIntroLine() {
   else showIntroLine();
 }
 function endIntro() {
+  clearTimeout(introTimer);
   introStep = -1;
   dialogEl.classList.remove('open');
   skipBtn.classList.remove('open');
@@ -7265,7 +7267,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-12.1';
+const VERSION = '2026-11-12.2';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {

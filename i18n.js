@@ -872,4 +872,7 @@ export const I18N = {
 "Il apparaîtra dans le classement mondial. Pas d’e-mail, pas de mot de passe.": ["It will show on the world leaderboard. No e-mail, no password.","Aparecerá en la clasificación mundial. Sin correo, sin contraseña.","Er erscheint in der Weltrangliste. Keine E-Mail, kein Passwort."],
 "▶ Jouer": ["▶ Play","▶ Jugar","▶ Spielen"],
 "Pseudo au hasard": ["Random nickname","Apodo al azar","Zufälliger Spitzname"],
+"Mon bureau est envahi de cafards ! J’ai tout essayé : le spray, les pièges, la chaussure…": ["My desk is overrun by cockroaches! I’ve tried everything: spray, traps, the shoe…","¡Mi escritorio está invadido de cucarachas! Lo he probado todo: el spray, las trampas, el zapato…","Mein Schreibtisch ist voller Kakerlaken! Ich habe alles versucht: Spray, Fallen, den Schuh…"],
+"Attends… Ma vieille toupie ! Ils vont voir.": ["Wait… My old spinning top! They’re in for it now.","Espera… ¡Mi vieja peonza! Se van a enterar.","Moment… Mein alter Kreisel! Jetzt können sie was erleben."],
+"À chaque vague, j’en écrase assez avant d’être à court de lancers. À moi de jouer !": ["Each wave, I squash enough of them before I run out of launches. My turn!","En cada oleada, aplasto suficientes antes de quedarme sin lanzamientos. ¡Me toca!","In jeder Welle zerquetsche ich genug, bevor mir die Würfe ausgehen. Los geht’s!"],
 };
