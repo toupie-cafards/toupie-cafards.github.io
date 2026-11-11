@@ -868,4 +868,8 @@ export const I18N = {
 "🎵 Musique : coupée": ["🎵 Music: off","🎵 Música: desactivada","🎵 Musik: aus"],
 "niv. {0} / {1}": ["lvl {0} / {1}","nv. {0} / {1}","St. {0} / {1}"],
 "✨ Niv. {0} : {1}": ["✨ Lvl {0}: {1}","✨ Nv. {0}: {1}","✨ St. {0}: {1}"],
+"Choisis ton pseudo pour jouer": ["Pick a nickname to play","Elige tu apodo para jugar","Wähle einen Spitznamen zum Spielen"],
+"Il apparaîtra dans le classement mondial. Pas d’e-mail, pas de mot de passe.": ["It will show on the world leaderboard. No e-mail, no password.","Aparecerá en la clasificación mundial. Sin correo, sin contraseña.","Er erscheint in der Weltrangliste. Keine E-Mail, kein Passwort."],
+"▶ Jouer": ["▶ Play","▶ Jugar","▶ Spielen"],
+"Pseudo au hasard": ["Random nickname","Apodo al azar","Zufälliger Spitzname"],
 };
