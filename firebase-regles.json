@@ -68,6 +68,9 @@
             "r": {
               ".validate": "newData.isString() && newData.val().length <= 40"
             },
+            "e": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9"
+            },
             "$other": {
               ".validate": false
             }

@@ -208,6 +208,25 @@
   .pop.bite { color: #ffb36b; font-size: 20px; }
   .pop.dmg { color: #fff6d6; font-size: 16px; font-weight: 900; animation-duration: .8s; }
   @keyframes rise { from { opacity: 1; margin-top: 0; } to { opacity: 0; margin-top: -50px; } }
+  /* Les pièces qui s'envolent vers l'argent, et l'argent qui « encaisse » */
+  .coinFly { position: fixed; left: 0; top: 0; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; pointer-events: none; z-index: 6;
+    background: radial-gradient(circle at 35% 30%, #fff6c8, #ffd45a 55%, #c98a10); box-shadow: 0 0 6px rgba(255,200,60,.8); }
+  #money.bump { animation: moneyBump .25s ease-out; }
+  @keyframes moneyBump { 0% { transform: scale(1); } 40% { transform: scale(1.22); color: #fff3b0; } 100% { transform: scale(1); } }
+  #money { transform-origin: left center; }
+  /* Grosse annonce au milieu de l'écran (combo, lancer réussi) */
+  .pop.hype { font-size: 34px; color: #ffe08a; text-shadow: 0 3px 0 #7a3a00, 0 0 18px rgba(255,160,40,.8); animation: hype 1.1s ease-out forwards; z-index: 5; }
+  @keyframes hype { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); } 18% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+    30% { transform: translate(-50%, -50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -80%) scale(1); } }
+  /* Premier achat guidé */
+  .upgCard.guide { border-color: var(--green) !important; box-shadow: 0 0 0 2px var(--green), 0 0 22px rgba(80,220,120,.45) !important; animation: guidePulse 1.1s ease-in-out infinite; position: relative; }
+  .upgCard.guide button { position: relative; }
+  .upgCard.guide button::after { content: '👆'; position: absolute; left: 50%; top: 100%; font-size: 26px; transform: translateX(-50%); animation: guideHand .9s ease-in-out infinite; pointer-events: none; }
+  @keyframes guidePulse { 50% { box-shadow: 0 0 0 3px var(--green), 0 0 32px rgba(80,220,120,.7); } }
+  @keyframes guideHand { 50% { transform: translate(-50%, -8px); } }
+  .guideNote { background: rgba(80,220,120,.14); border: 1px solid var(--green); color: #c9ffd8; border-radius: 10px; padding: 9px 12px; margin: 0 0 10px; font-weight: 800; text-align: center; }
+  #shopBtn.guide, #closeShop.guide { animation: shopGuide 1s ease-in-out infinite; }
+  @keyframes shopGuide { 50% { transform: scale(1.12); box-shadow: 0 0 0 3px var(--green), 0 0 20px rgba(80,220,120,.7); } }
 
   #banner { position: fixed; top: 22%; left: 50%; transform: translate(-50%, -50%) scale(.9); padding: 14px 22px; background: var(--panel);
     border: 2px solid var(--accent); border-radius: 14px; font-weight: 800; font-size: 18px; text-align: center; opacity: 0;
@@ -1507,10 +1526,21 @@ function stageTypes() {
   return st.from === 0 ? types : [bugType(st.fodder), ...types];
 }
 // Remplit le bureau jusqu'au maximum du Nid (quand la toupie tombe et au début d'une partie)
+// Toute première vague du joueur : les cafards tombent en tas devant le lanceur et y restent,
+// pour que même un premier lancer maladroit en écrase plusieurs
+const FIRST_SPOT = { x: 0, z: -0.12, r: 0.2 };
+function firstWave() { const run = state.run; return isStory() && !nest && run.wave === 1 && run.wavesCleared === 0 && (state.best.histoire || 1) <= 1; }
 function refillBoard() {
   let n = bugs.filter(b => !b.dying && !b.gone).length;
   // Tous les cafards tombent en même temps (même hauteur, à peine décalés)
-  while (n < bugCap()) { spawnBug(false, 0.7 + Math.random() * 0.08); n++; }
+  const fw = firstWave();
+  while (n < bugCap()) {
+    if (fw) {
+      const a = Math.random() * Math.PI * 2, d = FIRST_SPOT.r * Math.sqrt(Math.random());
+      spawnBug(false, 0.7 + Math.random() * 0.08, { x: FIRST_SPOT.x + Math.cos(a) * d * 1.3, z: FIRST_SPOT.z + Math.sin(a) * d });
+    } else spawnBug(false, 0.7 + Math.random() * 0.08);
+    n++;
+  }
   spawnTimer = 0;
 }
 // Palier de skin actuel d'une amélioration
@@ -3770,7 +3800,10 @@ smellGeo.rotateX(-Math.PI / 2);
 
 const tops = [];
 const aliveTops = () => tops.filter(t => !t.falling);
+let launchKills = 0;
 function launchTops(aim, power, perfect) {
+  launchKills = 0;
+  statsStep(2); // premier lancer
   const dir = new THREE.Vector2(aim.x - LAUNCH.x, aim.y - LAUNCH.y);
   if (dir.y > -0.05) dir.set(dir.x, -0.05);
   dir.normalize();
@@ -3871,6 +3904,7 @@ function animateSparks(dt) {
         scene.add(sp.s);
         sparks.push(sp);
       }
+      sp.vx = 0; sp.s.material.color.setHex(0xffffff);
       const a = Math.random() * Math.PI * 2, r = b.t.r * (0.4 + Math.random() * 0.8);
       sp.s.position.set(b.x + Math.cos(a) * r, b.t.r * (0.5 + Math.random() * 0.6), b.z + Math.sin(a) * r);
       sp.life = sp.max = 0.35 + Math.random() * 0.35;
@@ -3885,7 +3919,29 @@ function animateSparks(dt) {
     const k = sp.life / sp.max;              // scintille : grandit puis s'éteint
     sp.s.scale.setScalar(sp.size * Math.sin(k * Math.PI));
     sp.s.material.opacity = Math.min(1, k * 2);
-    sp.s.position.y += dt * 0.03;
+    if (sp.vx) { // éclat d'impact : part en gerbe puis retombe
+      sp.s.position.x += sp.vx * dt; sp.s.position.z += sp.vz * dt;
+      sp.vy -= 1.2 * dt; sp.s.position.y = Math.max(0.005, sp.s.position.y + sp.vy * dt);
+    } else sp.s.position.y += dt * 0.03;
+  }
+}
+// Gerbe d'étincelles quand un insecte est écrasé
+function burst(x, z, n, color, size) {
+  for (let i = 0; i < n; i++) {
+    let sp = sparks.find(o => !o.s.visible);
+    if (!sp) {
+      if (sparks.length >= 160) return;
+      sp = { s: new THREE.Sprite(new THREE.SpriteMaterial({ map: sparkTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })) };
+      scene.add(sp.s);
+      sparks.push(sp);
+    }
+    const a = Math.random() * Math.PI * 2, v = 0.25 + Math.random() * 0.35;
+    sp.vx = Math.cos(a) * v || 0.001; sp.vz = Math.sin(a) * v; sp.vy = 0.25 + Math.random() * 0.3;
+    sp.s.position.set(x, 0.02, z);
+    sp.s.material.color.setHex(color);
+    sp.life = sp.max = 0.3 + Math.random() * 0.25;
+    sp.size = size * (0.7 + Math.random() * 0.6);
+    sp.s.visible = true;
   }
 }
 
@@ -4533,6 +4589,11 @@ function gildBug(b) {
   b.mat.emissiveIntensity = 0.55;
 }
 function newTarget(b) {
+  if (firstWave() && !b.boss) { // première vague : ils piétinent sur place
+    const a = Math.random() * Math.PI * 2, d = FIRST_SPOT.r * Math.sqrt(Math.random());
+    b.tx = FIRST_SPOT.x + Math.cos(a) * d * 1.3; b.tz = FIRST_SPOT.z + Math.sin(a) * d;
+    return;
+  }
   b.tx = (Math.random() * 2 - 1) * (DESK_X - 0.06);
   b.tz = (Math.random() * 2 - 1) * (DESK_Z - 0.06);
 }
@@ -4751,6 +4812,51 @@ function popup(text, x, z, cls = '') {
   popLayer.appendChild(el);
   setTimeout(() => el.remove(), 1000);
 }
+// Des pièces s'envolent de l'insecte écrasé jusqu'à l'argent, qui « encaisse » à leur arrivée
+let coinsFlying = 0, moneyBumpT = 0;
+function coinFly(x, z, n) {
+  const target = document.getElementById('money').getBoundingClientRect();
+  if (!target.width) return;
+  tmpV.set(x, 0.03, z).project(camera);
+  const rect = canvasRect || (canvasRect = renderer.domElement.getBoundingClientRect());
+  const sx = rect.left + (tmpV.x * 0.5 + 0.5) * rect.width, sy = rect.top + (-tmpV.y * 0.5 + 0.5) * rect.height;
+  const tx = target.left + Math.min(40, target.width / 2), ty = target.top + target.height / 2;
+  for (let i = 0; i < n && coinsFlying < 14; i++) {
+    coinsFlying++;
+    const el = document.createElement('div');
+    el.className = 'coinFly';
+    popLayer.appendChild(el);
+    const jx = sx + (Math.random() - 0.5) * 30, jy = sy + (Math.random() - 0.5) * 20;
+    const mx = (jx + tx) / 2 + (Math.random() - 0.5) * 80, my = Math.min(jy, ty) - 40 - Math.random() * 60;
+    const anim = el.animate([
+      { transform: `translate(${jx}px, ${jy}px) scale(.6)` },
+      { transform: `translate(${mx}px, ${my}px) scale(1.15)`, offset: 0.4 },
+      { transform: `translate(${tx}px, ${ty}px) scale(.7)` },
+    ], { duration: 520 + i * 70 + Math.random() * 80, easing: 'ease-in', fill: 'forwards' });
+    anim.onfinish = () => {
+      el.remove();
+      coinsFlying--;
+      const m = document.getElementById('money');
+      if (performance.now() - moneyBumpT > 90) {
+        moneyBumpT = performance.now();
+        m.classList.remove('bump'); void m.offsetWidth; m.classList.add('bump');
+        SFX.play('coin');
+      }
+    };
+  }
+}
+// Grosse annonce au milieu du bureau
+function hype(text) {
+  if (popLayer.querySelector('.hype')) popLayer.querySelector('.hype').remove();
+  const el = document.createElement('div');
+  el.className = 'pop hype';
+  el.textContent = text;
+  el.style.left = '50%';
+  el.style.top = '34%';
+  popLayer.appendChild(el);
+  setTimeout(() => el.remove(), 1150);
+}
+
 const bannerEl = document.getElementById('banner');
 let bannerTimer = 0;
 // ---------- Sons : tout est fabriqué à la volée avec Web Audio ----------
@@ -4826,10 +4932,11 @@ const SFX = (() => {
       tone((420 - 200 * size) * p, 0.13, { type: 'square', vol: 0.045, slide: 0.3, delay: 0.01 });
       if (size > 0.5) tone(70, 0.18, { type: 'sine', vol: 0.18, slide: 0.6, delay: 0.02 });
     },
-    combo(n) { const st = SCALE[Math.min(SCALE.length - 1, n - 3)]; tone(523 * Math.pow(2, st / 12), 0.16, { type: 'triangle', vol: 0.13 }); },
+    combo(n) { const st = SCALE[Math.max(0, Math.min(SCALE.length - 1, n - 2))]; tone(523 * Math.pow(2, st / 12), 0.16, { type: 'triangle', vol: 0.13 }); },
     perfect() { [660, 880, 1320].forEach((f, i) => tone(f, 0.2, { type: 'triangle', vol: 0.13, delay: i * 0.06 })); },
     wave() { [523, 659, 784, 1047].forEach((f, i) => tone(f, i === 3 ? 0.45 : 0.16, { type: 'square', vol: 0.07, delay: i * 0.11 })); },
     defeat() { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.35, { type: 'sawtooth', vol: 0.06, delay: i * 0.2, slide: 0.97 })); },
+    coin() { tone(1568 + Math.random() * 200, 0.09, { type: 'triangle', vol: 0.05 }); tone(2349, 0.12, { type: 'sine', vol: 0.03, delay: 0.04 }); },
     buy() {
       // « ka-tching » de tiroir-caisse
       noise(0.05, { vol: 0.1, freq: 3000, type: 'bandpass', q: 2 });
@@ -4866,7 +4973,7 @@ const SFX = (() => {
       tone(160, 0.18, { type: 'square', vol: 0.05 * v, slide: 0.6, delay: 0.02 });
     },
   };
-  const MIN_GAP = { hit: 0.035, kill: 0.03, crit: 0.06, combo: 0.05, boing: 0.12, zap: 0.06 };
+  const MIN_GAP = { coin: 0.07, hit: 0.035, kill: 0.03, crit: 0.06, combo: 0.05, boing: 0.12, zap: 0.06 };
   function play(name, arg = 0) {
     if (!on()) return;
     const t = ctx.currentTime;
@@ -5170,11 +5277,19 @@ function killBug(b) {
     }
   }
   popup('+' + fmtMoney(gain), b.x, b.z);
-  if (combo >= 3) popup(T('Combo ×') + combo, b.x, b.z - 0.05, 'crit');
+  if (combo >= 2) popup(T('Combo ×') + combo, b.x, b.z - 0.05, 'crit');
+  launchKills++;
+  if (state.kills === 1) statsStep(3); // premier insecte écrasé de sa vie
+  // Gerbe d'étincelles, pièces qui volent vers l'argent, petit ralenti (plus marqué quand le combo monte)
+  burst(b.x, b.z, b.golden ? 14 : 6 + Math.round(4 * Math.min(1, b.t.r / 0.04)), b.golden ? 0xffd040 : 0xffe0a0, 0.018 + b.t.r * 0.3);
+  coinFly(b.x, b.z, b.golden ? 6 : combo >= 3 ? 3 : 2);
+  const HYPE = { 3: T('Joli !'), 5: T('Carnage !'), 8: T('Inarrêtable !'), 12: T('LÉGENDAIRE !') };
+  if (HYPE[combo]) { hype(`${HYPE[combo]} ×${combo}`); hitStop(0.22, 0.18); addShake(0.006); buzz([20, 30, 40]); }
+  else hitStop(combo >= 2 ? 0.07 : 0.05, 0.3);
   // Sons, compteur de combo et secousse selon la taille de l'insecte
   const size = Math.min(1, b.t.r / 0.08);
   SFX.play('kill', size);
-  if (combo >= 3) {
+  if (combo >= 2) {
     SFX.play('combo', combo);
     const cm = document.getElementById('comboMeter');
     document.getElementById('comboNum').textContent = '×' + combo;
@@ -6367,6 +6482,12 @@ function endWave() {
   run.metaGain = (run.metaGain ?? run.wavesCleared) + metaGain;
   run.lastMetaGain = metaGain;
   run.wavesCleared++;
+  statsStep(4); // vague 1 repoussée
+  if (!state.tutos?.achat && !Object.keys(run.levels).length) {
+    const g = UPGRADES.find(u => u.id === GUIDE_UPGRADE);
+    const missing = g ? Math.ceil(costOf(g) - run.cash) : 0;
+    if (missing > 0) { run.cash += missing; run.money += missing; reward += missing; run.lastReward = reward; run.welcome = true; }
+  }
   const lockedBefore = UPGRADES.filter(u => upgradeLock(u));
   run.wave++;
   startWave();
@@ -6409,6 +6530,7 @@ function showPerkChoice() {
   lead.className = 'lead';
   lead.textContent = isStory()
     ? `+${fmtMoney(run.lastReward)}` + (run.lastSpare ? T(` (dont {0} lancer{1} non utilisé{2})`, run.lastSpare, run.lastSpare > 1 ? 's' : '', run.lastSpare > 1 ? 's' : '') : '')
+      + (run.welcome ? T(' (prime de bienvenue comprise)') : '')
       + T(` · Choisis un bonus. Vague {0} : {1} insectes en {2} lancers.`, run.wave, waveQuota(), waveLaunches())
     : T(`+{0} · +2 🍪 · Choisis un bonus pour cette partie (vague {1} ensuite)`, fmtMoney(run.lastReward), run.wave);
   lead.textContent += ` · +${run.lastMetaGain || 1} 🌊`;
@@ -6454,6 +6576,30 @@ function takePerk(id) {
   const p = PERKS.find(x => x.id === id);
   banner(`${p.icon} ${p.name}`, isStory() ? T(`Vague {0} : écrase {1} insectes en {2} lancers`, run.wave, waveQuota(), waveLaunches()) : T(`Vague {0} : ça repart !`, run.wave));
   shopDirty = true;
+  run.welcome = false;
+  maybeShopGuide();
+}
+
+// Premier achat guidé : dès qu'on peut s'offrir sa première amélioration, l'atelier s'ouvre (une seule fois)
+// sur la carte à acheter, qui clignote avec une main. Tant que rien n'est acheté, le bouton Atelier clignote.
+const GUIDE_UPGRADE = 'diametre';
+let shopGuide = '';
+function guideTarget() {
+  if (state.tutos?.achat || !isStory() || nest) return null;
+  const pref = UPGRADES.find(u => u.id === GUIDE_UPGRADE);
+  const ok = u => !upgradeLock(u) && lv(u.id) < u.max && state.run.cash >= costOf(u);
+  return ok(pref) ? pref : UPGRADES.filter(ok).sort((a, b) => costOf(a) - costOf(b))[0] || null;
+}
+function maybeShopGuide() {
+  const u = guideTarget();
+  $('shopBtn').classList.toggle('guide', !!u);
+  state.tutos = state.tutos || {};
+  if (!u || state.tutos.achatVu || paused || aliveTops().length || introStep >= 0) return;
+  state.tutos.achatVu = true;
+  save();
+  shopGuide = u.id;
+  currentTab = u.tab;
+  openWorkshop();
 }
 
 function defeat() {
@@ -6596,6 +6742,7 @@ function openMenu() {
 }
 function enterMode(mode, { forceIntro = false } = {}) {
   menuEl.classList.remove('open');
+  statsStep(1);
   if (state.run.mode !== mode) {
     clearBoard();
     state.mode = mode;
@@ -6949,6 +7096,15 @@ const STATS_SITE = (() => {
 })();
 const statsOn = !!(STATS_SITE && !TEST_MODE && LB_CONFIG.dbURL);
 let statsPid = '', statsFirst = false, statsWave = -1;
+// Étape la plus loin atteinte aujourd'hui : 1 entré en jeu, 2 a lancé, 3 a écrasé un insecte, 4 vague 1 repoussée, 5 a acheté une amélioration
+let statsE = 0;
+function statsStep(e) {
+  if (!statsOn || e <= statsE) return;
+  statsE = e;
+  if (statsWave < 0) return; // envoyé avec le premier comptage
+  const day = new Date().toISOString().slice(0, 10);
+  fetch(`${LB_CONFIG.dbURL}/stats/j/${day}/${statsPid}.json`, { method: 'PATCH', body: JSON.stringify({ s: STATS_SITE, w: statsWave, e }), keepalive: true }).catch(() => { /* hors ligne */ });
+}
 if (statsOn) {
   try { statsPid = STORE.getItem(STATS_KEY) || ''; } catch { /* stockage bloqué */ }
   if (!/^[a-z0-9]{12}$/.test(statsPid)) {
@@ -6973,6 +7129,7 @@ function statsSend(wave) {
   statsWave = w;
   const day = new Date().toISOString().slice(0, 10);
   const body = { s: STATS_SITE, w };
+  if (statsE) body.e = statsE;
   if (first) {
     if (statsFirst) body.n = 1;
     if (statsRef) body.r = statsRef;
@@ -7267,7 +7424,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-12.2';
+const VERSION = '2026-11-12.3';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -8011,6 +8168,17 @@ function buy(u) {
   shopDirty = true;
   previewDirty = true;
   SFX.play('buy');
+  if (!state.tutos?.achat) {
+    state.tutos = state.tutos || {};
+    state.tutos.achat = true;
+    shopGuide = '';
+    $('shopBtn').classList.remove('guide');
+    save();
+    statsStep(5); // première amélioration achetée
+    banner(T('✨ Première amélioration !'), T('Ta toupie est plus forte. Retourne au bureau pour l’essayer !'));
+    $('closeShop').classList.add('guide');
+    setTimeout(() => $('closeShop').classList.remove('guide'), 6000);
+  }
   if (u.skins && skinTier(u.id) > before) { banner(u.tab === 'lanceur' ? T('🚀 Nouvelle pièce pour le lanceur !') : T('🌀 Nouvelle pièce pour la toupie !'), u.skins[skinTier(u.id)][1]); SFX.play('evolve'); }
 }
 
@@ -8045,6 +8213,14 @@ function renderShop() {
     modeRow.appendChild(b);
   }
   shopList.appendChild(modeRow);
+  const gu = !state.tutos?.achat && guideTarget();
+  if (gu && gu.tab === currentTab) {
+    shopGuide = gu.id;
+    const note = document.createElement('div');
+    note.className = 'guideNote';
+    note.textContent = T('💡 Tu as assez d’argent ! Touche le prix pour acheter ta première amélioration.');
+    shopList.appendChild(note);
+  } else shopGuide = '';
   if (currentTab === 'bureau' && isStory() && stageSeen() >= 1) {
     const run = state.run, ok = stageSeen() >= 2;
     const card = document.createElement('div');
@@ -8069,7 +8245,7 @@ function renderShop() {
   }
   for (const u of UPGRADES.filter(u => u.tab === currentTab && (!u.modes || u.modes.includes(state.run.mode)) && (TEST_MODE === 'riche' || (u.stage || 0) <= stageSeen() + 1))) {
     const card = document.createElement('div');
-    card.className = 'card upgCard';
+    card.className = 'card upgCard' + (shopGuide === u.id ? ' guide' : '');
     const lockReason = upgradeLock(u);
     const locked = !!lockReason;
     const level = lv(u.id), maxed = level >= u.max;
@@ -8293,7 +8469,9 @@ function frame(now) {
   SFX.music(cr || menuEl.classList.contains('open') || gateEl.classList.contains('open') ? 'menu' : nest ? 'nid' : 'jeu');
   canvasRect = null; // re-mesurée au premier texte flottant de cette image
   // La montre du Carton à Jouets : tout le jeu tourne deux fois plus vite
-  if (!paused) update(dt * gameSpeed());
+  const slow = slowT > 0 ? slowK : 1;
+  slowT = Math.max(0, slowT - dt);
+  if (!paused) update(dt * gameSpeed() * slow);
   else { hudTimer -= dt; if (hudTimer <= 0) { hudTimer = 0.2; updateHud(); } if (shopDirty) renderShop(); SFX.spin(0, 0); }
   // Chrono du speedrun : le temps réel passé dans la partie (pas dans le menu ni la pause)
   const run = state.run;
@@ -8319,6 +8497,9 @@ function frame(now) {
   } else renderer.render(scene, camera);
   renderPreview(dt);
 }
+// Ralenti bref quand on écrase des insectes (« hit-stop ») : le temps du jeu ralentit un instant, puis repart
+let slowT = 0, slowK = 1;
+function hitStop(dur, k) { if (dur > slowT) { slowT = dur; slowK = k; } }
 function gameSpeed() { return metaLevel('montre') && state.speedX2 && !nest ? 2 : 1; }
 
 // Pendant l'intro, la toupie tombe du carton sur le bureau et se met à tourner
@@ -8431,7 +8612,12 @@ function update(dt) {
   // Carnage : la recharge démarre quand la dernière toupie tombe
   const aliveNow = aliveTops().length;
   // Quand la dernière toupie tombe, le bureau se remplit de cafards jusqu'au maximum du Nid
-  if (aliveBefore > 0 && aliveNow === 0 && playing && !nest) refillBoard();
+  if (aliveBefore > 0 && aliveNow === 0 && playing && !nest) {
+    if (launchKills >= 4 && isStory()) hype(T('{0} insectes en un lancer !', launchKills));
+    launchKills = 0;
+    refillBoard();
+    maybeShopGuide();
+  }
   if (!isStory()) {
     if (aliveBefore > 0 && aliveNow === 0) cooldown = S.cooldown;
     if (aliveNow === 0 && cooldown > 0) cooldown -= dt;

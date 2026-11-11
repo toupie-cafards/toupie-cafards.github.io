@@ -875,4 +875,13 @@ export const I18N = {
 "Mon bureau est envahi de cafards ! J’ai tout essayé : le spray, les pièges, la chaussure…": ["My desk is overrun by cockroaches! I’ve tried everything: spray, traps, the shoe…","¡Mi escritorio está invadido de cucarachas! Lo he probado todo: el spray, las trampas, el zapato…","Mein Schreibtisch ist voller Kakerlaken! Ich habe alles versucht: Spray, Fallen, den Schuh…"],
 "Attends… Ma vieille toupie ! Ils vont voir.": ["Wait… My old spinning top! They’re in for it now.","Espera… ¡Mi vieja peonza! Se van a enterar.","Moment… Mein alter Kreisel! Jetzt können sie was erleben."],
 "À chaque vague, j’en écrase assez avant d’être à court de lancers. À moi de jouer !": ["Each wave, I squash enough of them before I run out of launches. My turn!","En cada oleada, aplasto suficientes antes de quedarme sin lanzamientos. ¡Me toca!","In jeder Welle zerquetsche ich genug, bevor mir die Würfe ausgehen. Los geht’s!"],
+"Joli !": ["Nice!","¡Bien!","Schön!"],
+"Carnage !": ["Carnage!","¡Masacre!","Gemetzel!"],
+"Inarrêtable !": ["Unstoppable!","¡Imparable!","Unaufhaltsam!"],
+"LÉGENDAIRE !": ["LEGENDARY!","¡LEGENDARIO!","LEGENDÄR!"],
+"{0} insectes en un lancer !": ["{0} bugs in one launch!","¡{0} insectos en un lanzamiento!","{0} Insekten mit einem Wurf!"],
+" (prime de bienvenue comprise)": [" (welcome bonus included)"," (bonificación de bienvenida incluida)"," (inkl. Willkommensbonus)"],
+"💡 Tu as assez d’argent ! Touche le prix pour acheter ta première amélioration.": ["💡 You have enough cash! Tap the price to buy your first upgrade.","💡 ¡Tienes suficiente dinero! Toca el precio para comprar tu primera mejora.","💡 Du hast genug Geld! Tippe auf den Preis, um dein erstes Upgrade zu kaufen."],
+"✨ Première amélioration !": ["✨ First upgrade!","✨ ¡Primera mejora!","✨ Erstes Upgrade!"],
+"Ta toupie est plus forte. Retourne au bureau pour l’essayer !": ["Your top is stronger. Head back to the desk to try it!","Tu peonza es más fuerte. ¡Vuelve al escritorio para probarla!","Dein Kreisel ist stärker. Zurück zum Schreibtisch, um ihn auszuprobieren!"],
 };
