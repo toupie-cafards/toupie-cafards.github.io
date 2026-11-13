@@ -1,0 +1,8 @@
+Sons de Toupie contre Cafards
+Tous les fichiers de ce dossier viennent des packs de Kenney (www.kenney.nl), sous licence CC0 (domaine public) :
+- Impact Sounds (chocs : écrasement, toupie qui cogne, pièces, chute, critique)
+- Interface Sounds (refus, choix)
+- RPG Audio (bruit de pièces à l'achat)
+- Digital Audio (évolution, éclairs)
+Convertis en WAV mono 22 kHz (sauf les .mp3), recadrés et normalisés.
+Licence : http://creativecommons.org/publicdomain/zero/1.0/ — merci Kenney !

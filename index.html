@@ -357,6 +357,16 @@
   #gateDice { font-size: 24px; width: 56px; flex-shrink: 0; border-radius: 12px; border: 1px solid rgba(255,255,255,.2); background: var(--panel-2); cursor: pointer; }
   #gateDice:active { transform: rotate(-20deg) scale(.95); }
   .gateHint { color: var(--muted); font-size: 13px; margin: 8px 0 18px; }
+  /* Plus de pseudo à l'entrée : on joue tout de suite (il est demandé au premier score) */
+  #nameGate .gateLabel, #nameGate .gateRow, #nameGate .gateHint { display: none; }
+  #nameGate #gatePlay { margin-top: 18px; }
+  .pseudoAsk { background: rgba(255,212,90,.1); border: 1px solid var(--gold); border-radius: 12px; padding: 10px 12px; margin: 10px 0 14px; text-align: center; }
+  .pseudoAsk .pa-t { font-weight: 800; margin-bottom: 8px; }
+  .pseudoAsk input { flex: 1; min-width: 0; font: inherit; font-size: 17px; font-weight: 800; text-align: center; padding: 9px; border-radius: 10px;
+    border: 2px solid var(--gold); background: rgba(0,0,0,.35); color: var(--text); outline: none; }
+  .pseudoAsk .pa-dice { font-size: 20px; width: 46px; flex-shrink: 0; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: var(--panel-2); cursor: pointer; }
+  .pseudoAsk .pa-ok { margin: 0; padding: 9px 14px; font-size: 15px; flex-shrink: 0; }
+  .pseudoAsk .gateHint { margin: 6px 0 0; }
   #gatePlay { font-size: 22px; padding: 14px 44px; }
   #gatePlay:disabled { opacity: .45; cursor: default; }
   #nameGate .defiNote { margin-top: 14px; }
@@ -4994,9 +5004,41 @@ function hype(text) {
 const bannerEl = document.getElementById('banner');
 let bannerTimer = 0;
 // ---------- Sons : tout est fabriqué à la volée avec Web Audio ----------
+const SON_DIR = 'sons/'; // (à plat pour CrazyGames : le script de build le remplace)
 const SFX = (() => {
   let ctx = null, master = null, hum = null;
   const last = {};
+  // De vrais sons enregistrés (packs Kenney, licence CC0 : voir sons/LICENCE.txt), plusieurs variantes par son.
+  // Tant qu'un son n'est pas chargé (ou s'il ne se décode pas), le son de synthèse joue à sa place.
+  const SAMPLE_FILES = { ecrase: 5, ecraseGros: 3, toc: 5, piece: 5, critique: 3, chute: 2, achat: 2, refus: 1, choix: 1, evolution: 1, eclair: 2 };
+  const SAMPLE_EXT = { evolution: 'mp3', eclair: 'mp3' };
+  const samples = {};
+  let samplesAsked = false, layer = 1;
+  function loadSamples() {
+    if (samplesAsked || !ctx) return;
+    samplesAsked = true;
+    for (const [k, n] of Object.entries(SAMPLE_FILES)) {
+      samples[k] = [];
+      for (let i = 0; i < n; i++) {
+        fetch(SON_DIR + k + i + '.' + (SAMPLE_EXT[k] || 'wav'))
+          .then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('absent'))))
+          .then(b => new Promise((ok, ko) => ctx.decodeAudioData(b, ok, ko)))
+          .then(buf => samples[k].push(buf))
+          .catch(() => { /* ce son restera en synthèse */ });
+      }
+    }
+  }
+  function sample(k, vol, rate = 1) {
+    const l = samples[k];
+    if (!l || !l.length) return false;
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = l[Math.floor(Math.random() * l.length)];
+    src.playbackRate.value = rate;
+    g.gain.value = vol;
+    src.connect(g); g.connect(master);
+    src.start();
+    return true;
+  }
   function init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
     try {
@@ -5006,6 +5048,7 @@ const SFX = (() => {
       const comp = ctx.createDynamicsCompressor();
       master.connect(comp);
       comp.connect(ctx.destination);
+      loadSamples();
     } catch { ctx = null; }
   }
   const on = () => ctx && state.settings?.sound !== false;
@@ -5017,7 +5060,7 @@ const SFX = (() => {
     osc.frequency.setValueAtTime(freq, t0);
     if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t0 + dur);
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol, t0 + attack);
+    g.gain.exponentialRampToValueAtTime(vol * layer, t0 + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     osc.connect(g); g.connect(out);
     osc.start(t0); osc.stop(t0 + dur + 0.02);
@@ -5036,7 +5079,7 @@ const SFX = (() => {
     f.type = type; f.Q.value = q;
     f.frequency.setValueAtTime(freq, t0);
     if (sweep) f.frequency.exponentialRampToValueAtTime(freq * sweep, t0 + dur);
-    g.gain.setValueAtTime(vol, t0);
+    g.gain.setValueAtTime(vol * layer, t0);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     src.connect(f); f.connect(g); g.connect(out);
     src.start(t0); src.stop(t0 + dur + 0.02);
@@ -5108,13 +5151,32 @@ const SFX = (() => {
     },
   };
   const MIN_GAP = { coin: 0.07, hit: 0.035, kill: 0.03, crit: 0.06, combo: 0.05, boing: 0.12, zap: 0.06 };
+  // Le vrai son de chaque effet : il renvoie la part de synthèse gardée par-dessus (0 = aucune), ou false s'il n'est pas prêt
+  const REAL = {
+    kill: sz => { const big = sz > 0.5; return sample(big ? 'ecraseGros' : 'ecrase', 0.55 + 0.35 * sz, rp() * (big ? 1.05 - 0.15 * sz : 1.25 - 0.3 * sz)) ? 0.45 : false; },
+    hit: sz => (sample('toc', 0.32 + 0.25 * sz, rp() * (1.25 - 0.35 * sz)) ? 0.3 : false),
+    coin: () => (sample('piece', 0.16, 1.45 + Math.random() * 0.35) ? 0 : false),
+    crit: () => (sample('critique', 0.42, rp()) ? 0.5 : false),
+    fall: () => (sample('chute', 0.45, rp()) ? 0.35 : false),
+    buy: () => (sample('achat', 0.5, rp()) ? 0.45 : false),
+    boing: () => (sample('refus', 0.42) ? 0.45 : false),
+    pick: () => (sample('choix', 0.55, rp()) ? 0 : false),
+    evolve: () => (sample('evolution', 0.4) ? 0.55 : false),
+    zap: () => (sample('eclair', 0.22, rp()) ? 0.5 : false),
+  };
   function play(name, arg = 0) {
     if (!on()) return;
     const t = ctx.currentTime;
     if (MIN_GAP[name] && t - (last[name] || 0) < MIN_GAP[name]) return;
     last[name] = t;
+    let synth = 1;
+    try { if (REAL[name]) { const r = REAL[name](arg); if (r !== false) synth = r; } } catch { /* on garde la synthèse */ }
+    if (synth <= 0) return;
+    layer = synth;
     try { SOUNDS[name](arg); } catch { /* son impossible : sans gravité */ }
+    layer = 1;
   }
+  window.__sfxSamples = samples; // (tests : quels sons sont chargés)
   // Ronronnement de la toupie : sa note suit la vitesse de rotation
   function spin(rpm, ratio) {
     if (!on() || !rpm) { if (hum) { hum.g.gain.setTargetAtTime(0, ctx.currentTime, 0.08); } return; }
@@ -6797,6 +6859,7 @@ function defeat() {
   share.onclick = () => shareChallenge(T('J’ai tenu jusqu’à la vague {0} dans Toupie contre Cafards 🌀🪳 Tu fais mieux ? 😏', run.wave), share, { w: run.wave });
   btns.append(...(ON_CG ? [] : [share]), box, btn);
   modalBox.append(h, lead, sum, note, btns);
+  if (needPseudo() && (state.best.histoire || 1) >= 2) lead.after(pseudoBox(() => { lbSubmit(true); lbSubmitSpeed(true); }));
   modal.classList.add('open');
 }
 
@@ -7526,7 +7589,7 @@ function dailyEnd() {
   modalBox.append(h, big, sub, line, ...parts, lb, btns);
   modal.classList.add('open');
   // Envoi du score puis le classement du jour (le haut du tableau, et ma place)
-  (async () => {
+  const showRank = async () => {
     if (!lbReady()) return;
     await lbDailySubmit();
     try {
@@ -7543,9 +7606,11 @@ function dailyEnd() {
         lb.append(r);
       });
       lb.append(el('div', 'msg', me >= 0 ? T('Ta place : {0} sur {1} aujourd’hui', me + 1, rows.length)
-        : !(state.pseudo || '').trim() ? T('👤 Entre un pseudo dans le menu pour apparaître dans le classement.') : T('{0} joueur{1} aujourd’hui', rows.length, rows.length > 1 ? 's' : '')));
+        : !(state.pseudo || '').trim() ? T('👆 Choisis un pseudo juste au-dessus pour y apparaître.') : T('{0} joueur{1} aujourd’hui', rows.length, rows.length > 1 ? 's' : '')));
     } catch { lb.replaceChildren(el('div', 'msg', T('📡 Classement indisponible (pas de connexion ?)'))); }
-  })();
+  };
+  showRank();
+  if (needPseudo()) lb.before(pseudoBox(showRank));
 }
 async function lbDailySubmit() {
   if (!lbReady() || TEST_MODE) return;
@@ -7628,17 +7693,45 @@ function openNameGate() {
 gateInput.addEventListener('input', () => { gateTouched = true; gateCheck(); });
 gateInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !gatePlay.disabled) gatePlay.click(); });
 document.getElementById('gateDice').onclick = () => { gateTouched = true; gateInput.value = randomPseudo(); gateCheck(); SFX.init(); SFX.play('pick'); };
+gatePlay.disabled = false;
 gatePlay.onclick = () => {
-  const v = gateInput.value.trim().slice(0, 16);
-  if (v.length < 2) return;
-  state.pseudo = v;
-  pseudoInput.value = v;
-  save();
   gateEl.classList.remove('open');
   SFX.init();
-  setTimeout(() => { lbSubmit(); lbSubmitSpeed(); }, 1500);
-  enterMode('histoire'); // directement en jeu (l'intro se lance si c'est la première fois)
+  enterMode('histoire'); // directement en jeu (l'intro se lance si c'est la première fois) ; le pseudo sera demandé au premier score
 };
+// Le pseudo est demandé au moment où un score peut entrer au classement (défaite, défi du jour), pas avant de jouer
+function needPseudo() { return !(state.pseudo || '').trim() && lbReady(); }
+function pseudoBox(done) {
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  const box = el('div', 'pseudoAsk');
+  const row = el('div', 'gateRow');
+  const inp = el('input');
+  inp.maxLength = 16; inp.value = randomPseudo(); inp.autocomplete = 'off'; inp.setAttribute('enterkeyhint', 'done');
+  inp.setAttribute('aria-label', T('Ton pseudo'));
+  const dice = el('button', 'pa-dice', '🎲'); dice.type = 'button';
+  const ok = el('button', 'bigBtn pa-ok', T('✔ Valider')); ok.type = 'button';
+  row.append(inp, dice, ok);
+  box.append(el('div', 'pa-t', T('🏆 Entre dans le classement mondial : choisis ton pseudo !')), row, el('div', 'gateHint', T('Pas d’e-mail, pas de mot de passe.')));
+  let touched = false;
+  inp.oninput = () => { touched = true; ok.disabled = inp.value.trim().length < 2; };
+  inp.onkeydown = e => { if (e.key === 'Enter' && !ok.disabled) ok.click(); };
+  dice.onclick = () => { touched = true; inp.value = randomPseudo(); ok.disabled = false; SFX.play('pick'); };
+  ok.onclick = () => {
+    const v = inp.value.trim().slice(0, 16);
+    if (v.length < 2) return;
+    state.pseudo = v;
+    pseudoInput.value = v;
+    save();
+    SFX.play('buy');
+    box.replaceChildren(el('div', 'pa-t', T('✅ C’est noté, {0} ! Ton score part au classement.', v)));
+    if (done) done();
+  };
+  // Sur CrazyGames, on propose le nom du compte du joueur s'il est connecté
+  if (ON_CG && cgReady) {
+    try { window.CrazyGames.SDK.user.getUser().then(u => { if (u && u.username && !touched) inp.value = String(u.username).slice(0, 16); }).catch(() => {}); } catch { /* pas de module joueur */ }
+  }
+  return box;
+}
 
 // Choix de la langue : on enregistre la partie puis on recharge la page dans la nouvelle langue
 for (const b of document.querySelectorAll('.langRow button')) {
@@ -7779,7 +7872,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-13.3';
+const VERSION = '2026-11-14.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {

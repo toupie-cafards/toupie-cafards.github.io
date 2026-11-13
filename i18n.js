@@ -940,4 +940,9 @@ export const I18N = {
 "🏆 Ton record": ["🏆 Your best", "🏆 Tu récord", "🏆 Dein Rekord"],
 "⚠️ Dernier lancer : fais-le compter !": ["⚠️ Last launch: make it count!", "⚠️ Último lanzamiento: ¡que cuente!", "⚠️ Letzter Wurf: Lass ihn zählen!"],
 "Prêt ! Encore {0} lancers": ["Ready! {0} launches left", "¡Listo! Quedan {0} lanzamientos", "Bereit! Noch {0} Würfe"],
+"👆 Choisis un pseudo juste au-dessus pour y apparaître.": ["👆 Pick a nickname just above to appear in it.", "👆 Elige un apodo justo arriba para aparecer.", "👆 Wähle oben einen Spielernamen, um dort zu erscheinen."],
+"✔ Valider": ["✔ Confirm", "✔ Confirmar", "✔ Bestätigen"],
+"🏆 Entre dans le classement mondial : choisis ton pseudo !": ["🏆 Join the world leaderboard: pick your nickname!", "🏆 Entra en la clasificación mundial: ¡elige tu apodo!", "🏆 Ab in die Weltrangliste: Wähle deinen Spielernamen!"],
+"Pas d’e-mail, pas de mot de passe.": ["No email, no password.", "Sin correo ni contraseña.", "Keine E-Mail, kein Passwort."],
+"✅ C’est noté, {0} ! Ton score part au classement.": ["✅ Got it, {0}! Your score is on its way to the leaderboard.", "✅ ¡Anotado, {0}! Tu puntuación va a la clasificación.", "✅ Notiert, {0}! Deine Punktzahl geht in die Rangliste."],
 };
