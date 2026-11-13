@@ -884,4 +884,8 @@ export const I18N = {
 "💡 Tu as assez d’argent ! Touche le prix pour acheter ta première amélioration.": ["💡 You have enough cash! Tap the price to buy your first upgrade.","💡 ¡Tienes suficiente dinero! Toca el precio para comprar tu primera mejora.","💡 Du hast genug Geld! Tippe auf den Preis, um dein erstes Upgrade zu kaufen."],
 "✨ Première amélioration !": ["✨ First upgrade!","✨ ¡Primera mejora!","✨ Erstes Upgrade!"],
 "Ta toupie est plus forte. Retourne au bureau pour l’essayer !": ["Your top is stronger. Head back to the desk to try it!","Tu peonza es más fuerte. ¡Vuelve al escritorio para probarla!","Dein Kreisel ist stärker. Zurück zum Schreibtisch, um ihn auszuprobieren!"],
+"🌀 Améliorations": ["🌀 Upgrades","🌀 Mejoras","🌀 Upgrades"],
+"Attaque": ["Attack","Ataque","Angriff"],
+"Vague {0}": ["Wave {0}","Oleada {0}","Welle {0}"],
+"Touche un cercle pour l’améliorer, touche encore pour monter de niveau. Tu choisis l’ordre !": ["Tap a circle to upgrade it, tap again to level it up. You choose the order!","Toca un círculo para mejorarlo, vuelve a tocarlo para subir de nivel. ¡Tú eliges el orden!","Tippe auf einen Kreis, um ihn zu verbessern, tippe erneut für die nächste Stufe. Du wählst die Reihenfolge!"],
 };

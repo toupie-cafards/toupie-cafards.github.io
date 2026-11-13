@@ -144,11 +144,54 @@
     background: var(--accent); color: #1a1410; font-weight: 800; font-size: 15px; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
   .shopSide { width: min(400px, 46vw); display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid rgba(255,255,255,.1); min-height: 0; }
   .shopHead { display: flex; align-items: center; gap: 6px; padding: 10px; border-bottom: 1px solid rgba(255,255,255,.1); }
-  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; flex: 1; }
+  .tabs { display: grid; grid-template-columns: 2fr 1fr; gap: 4px; flex: 1; }
   .tabs button { border: 0; border-radius: 8px; padding: 8px 4px; background: var(--panel-2); color: var(--text);
     font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap; }
   .tabs button.active { background: var(--accent); color: #1a1410; }
   #shopList { overflow-y: auto; padding: 10px; flex: 1; }
+  /* Arbre des améliorations : un gros cercle au centre (la toupie en 3D), chaque amélioration est un cercle relié au centre par un fil */
+  #tree { position: absolute; inset: 0; display: none; overflow: auto; scrollbar-width: none; }
+  #tree::-webkit-scrollbar { display: none; }
+  #tree .treeIn { position: relative; }
+  #shop.tree #tree { display: block; }
+  #shop.tree .workshopView { background: radial-gradient(ellipse at 50% 50%, #503826, #1b130d 78%); }
+  #shop.tree #preview { position: absolute; left: var(--cx); top: var(--cy); width: var(--cd); height: var(--cd); transform: translate(-50%, -50%); border-radius: 50%; z-index: 2;
+    border: 3px solid var(--gold); box-shadow: 0 0 0 7px rgba(255,212,90,.1), 0 0 44px rgba(255,180,60,.35); background: radial-gradient(circle at 50% 60%, #7a5a3e, #2a1c12 80%); }
+  .workshopTitle, .workshopMoney, #closeShop { z-index: 5; }
+  #tree .threads { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #tree .threads path { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+  .tnode { position: absolute; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); border-radius: 50%; border: 0; padding: 4px; cursor: pointer; z-index: 3;
+    background: conic-gradient(var(--c) var(--p), rgba(255,255,255,.13) 0); transition: transform .15s; -webkit-tap-highlight-color: transparent; }
+  .tnode .in { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #5a4634, #22170f 80%); transition: box-shadow .25s; }
+  .tnode .in .ic { width: 60%; height: 60%; vertical-align: 0; }
+  .tnode .in .emo { font-size: calc(var(--d) * .42); line-height: 1; }
+  .tnode .lv { position: absolute; right: -5px; bottom: -3px; min-width: 20px; padding: 1px 5px; border-radius: 9px; background: #1b130d; border: 1.5px solid var(--c);
+    color: #fff; font-size: 11px; font-weight: 900; line-height: 1.3; }
+  .tnode .nm { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 3px; font-size: 11px; font-weight: 800; white-space: nowrap; color: #fff3e0;
+    text-shadow: 0 1px 3px #000, 0 0 6px #000; pointer-events: none; }
+  .tnode .pr { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 1px; font-size: 10.5px; font-weight: 900; white-space: nowrap; color: #e8d8c0;
+    background: rgba(20,12,6,.8); padding: 0 6px; border-radius: 7px; pointer-events: none; }
+  .tnode.can .pr { color: #1a1410; background: var(--gold); }
+  .tnode.can .in { box-shadow: 0 0 0 2px var(--gold), 0 0 18px rgba(255,212,90,.65); animation: tCan 1.6s ease-in-out infinite; }
+  @keyframes tCan { 50% { box-shadow: 0 0 0 2px var(--gold), 0 0 28px rgba(255,212,90,.9); } }
+  .tnode.locked { filter: grayscale(1) brightness(.62); cursor: default; }
+  .tnode.locked .nm { color: #b8aa98; }
+  .tnode.maxed .in { background: radial-gradient(circle at 35% 30%, #fff6d0, #e8b030 75%); }
+  .tnode.sel { transform: scale(1.14); z-index: 4; }
+  .tnode.sel .in { outline: 2px solid #fff; outline-offset: 2px; }
+  .tnode:not(.locked):active { transform: scale(.9); }
+  .tnode.bought { animation: tPop .4s ease-out; }
+  @keyframes tPop { 40% { transform: scale(1.3); } }
+  .tnode.nope { animation: tNope .35s; }
+  @keyframes tNope { 25% { translate: -5px 0; } 50% { translate: 5px 0; } 75% { translate: -3px 0; } }
+  .tnode.guide .in { box-shadow: 0 0 0 3px var(--green), 0 0 26px rgba(80,220,120,.8); }
+  .tnode.guide::after { content: '👆'; position: absolute; left: 60%; top: 85%; font-size: 28px; animation: guideHand .9s ease-in-out infinite; pointer-events: none; }
+  .tplus { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 18px; color: var(--gold); text-shadow: 0 2px 3px #000; pointer-events: none; z-index: 6;
+    animation: rise .8s ease-out forwards; }
+  .tbranch { position: absolute; transform: translate(-50%, -50%); font-size: 12px; font-weight: 900; letter-spacing: .5px; padding: 3px 10px; border-radius: 10px; z-index: 4;
+    background: rgba(20,14,10,.88); border: 1.5px solid var(--c); color: var(--c); pointer-events: none; white-space: nowrap; text-transform: uppercase; }
+  .treeHint { color: var(--muted); font-size: 13px; text-align: center; margin: 4px 0 10px; }
+  @media (max-aspect-ratio: 1/1) { #shop.tree .workshopView { height: 58vh; } }
   @media (max-aspect-ratio: 1/1) {
     #shop { flex-direction: column; }
     .workshopView { flex: none; height: 38vh; }
@@ -586,6 +629,7 @@
 <aside id="shop">
   <div class="workshopView">
     <canvas id="preview"></canvas>
+    <div id="tree"></div>
     <div class="workshopTitle">🏠 L’atelier de la maison</div>
     <div class="workshopMoney" id="workshopMoney"></div>
     <button id="closeShop">↩ Retour au bureau</button>
@@ -1174,9 +1218,7 @@ const INFEST_MAX = 170000; // la barre du tout dernier insecte
 //  AMÉLIORATIONS PERMANENTES (atelier) — avec leurs skins
 // =====================================================================
 const TABS = [
-  { id: 'toupie', label: T('🌀 Toupie') },
-  { id: 'lanceur', label: T('🚀 Lanceur') },
-  { id: 'bureau', label: T('🪳 Bureau') },
+  { id: 'arbre', label: T('🌀 Améliorations') },
   { id: 'stats', label: T('📊 Stats') },
 ];
 
@@ -6598,7 +6640,8 @@ function maybeShopGuide() {
   state.tutos.achatVu = true;
   save();
   shopGuide = u.id;
-  currentTab = u.tab;
+  currentTab = 'arbre';
+  treeSel = u.id;
   openWorkshop();
 }
 
@@ -7424,7 +7467,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-12.3';
+const VERSION = '2026-11-13.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -7984,7 +8027,8 @@ function updateCoach() {
 // =====================================================================
 const $ = id => document.getElementById(id);
 const shopEl = $('shop'), shopList = $('shopList'), tabsEl = $('tabs');
-let currentTab = 'toupie', shopDirty = true;
+let currentTab = 'arbre', shopDirty = true;
+let treeSel = ''; // l'amélioration sélectionnée dans l'arbre (sa fiche s'affiche à côté)
 
 for (const t of TABS) {
   const b = document.createElement('button');
@@ -7996,6 +8040,8 @@ for (const t of TABS) {
 // Entrer dans l'atelier de la maison : le jeu continue derrière (la toupie lancée tourne toujours sur le bureau)
 function openWorkshop() {
   if (introStep >= 0) return;
+  if (!treeSel) treeSel = 'diametre';
+  treeCenter = true;
   charging = false;
   previewDirty = true;
   shopDirty = true;
@@ -8084,13 +8130,15 @@ function framePreview(width, height, center) {
   previewCam.position.set(center.x, center.y + dist * 0.35, center.z + dist);
   previewCam.lookAt(center);
 }
+function previewKind() { return currentTab === 'arbre' ? (UPGRADES.find(u => u.id === treeSel)?.tab || 'toupie') : currentTab; }
 function buildPreview() {
   previewDirty = false;
-  previewTab = currentTab;
+  const kind = previewKind();
+  previewTab = kind;
   previewRoot.clear();
   previewRoot.userData = {};
   previewSpinners = [];
-  if (currentTab === 'lanceur') {
+  if (kind === 'lanceur') {
     // Le lanceur seul (la toupie, quand elle devient très large, le cachait), qui tourne doucement sur l'établi
     const l = launcher.clone();
     l.position.set(0, 0, -0.01);
@@ -8100,7 +8148,7 @@ function buildPreview() {
     previewRoot.add(turn);
     previewSpinners.push([turn, 0.45]);
     framePreview(0.15, 0.1, new THREE.Vector3(0, 0.035, 0));
-  } else if (currentTab === 'bureau') {
+  } else if (kind === 'bureau') {
     // Les insectes déjà rencontrés, à leur taille réelle, avec la lueur de la Prime
     const types = stageTypes();
     const widths = types.map(t => t.r * BUG_VISUAL * 2.6);
@@ -8126,7 +8174,7 @@ function buildPreview() {
 let previewTime = 0;
 function renderPreview(dt) {
   if (!shopEl.classList.contains('open')) return;
-  if (previewDirty || previewTab !== currentTab) buildPreview();
+  if (previewDirty || previewTab !== previewKind()) buildPreview();
   const w = previewCanvas.clientWidth, h = previewCanvas.clientHeight;
   if (previewCanvas.width !== Math.round(w * previewRenderer.getPixelRatio()) || previewCanvas.height !== Math.round(h * previewRenderer.getPixelRatio())) {
     previewRenderer.setSize(w, h, false);
@@ -8200,6 +8248,8 @@ function lotOf(u) {
 function renderShop() {
   shopDirty = false;
   for (const b of tabsEl.children) b.classList.toggle('active', b.dataset.tab === currentTab);
+  shopEl.classList.toggle('tree', currentTab === 'arbre');
+  if (currentTab !== 'arbre' && previewCanvas.parentElement !== shopEl.querySelector('.workshopView')) shopEl.querySelector('.workshopView').prepend(previewCanvas);
   shopList.replaceChildren();
   if (currentTab === 'stats') return renderStats();
   const modeRow = document.createElement('div');
@@ -8214,14 +8264,15 @@ function renderShop() {
   }
   shopList.appendChild(modeRow);
   const gu = !state.tutos?.achat && guideTarget();
-  if (gu && gu.tab === currentTab) {
+  if (gu && (currentTab === 'arbre' || gu.tab === currentTab)) {
     shopGuide = gu.id;
+    if (currentTab === 'arbre' && !treeSel) treeSel = gu.id;
     const note = document.createElement('div');
     note.className = 'guideNote';
     note.textContent = T('💡 Tu as assez d’argent ! Touche le prix pour acheter ta première amélioration.');
     shopList.appendChild(note);
   } else shopGuide = '';
-  if (currentTab === 'bureau' && isStory() && stageSeen() >= 1) {
+  if ((currentTab === 'arbre' || currentTab === 'bureau') && isStory() && stageSeen() >= 1) {
     const run = state.run, ok = stageSeen() >= 2;
     const card = document.createElement('div');
     card.className = 'card nestCard' + (ok ? '' : ' locked');
@@ -8243,7 +8294,21 @@ function renderShop() {
     }
     shopList.appendChild(card);
   }
-  for (const u of UPGRADES.filter(u => u.tab === currentTab && (!u.modes || u.modes.includes(state.run.mode)) && (TEST_MODE === 'riche' || (u.stage || 0) <= stageSeen() + 1))) {
+  if (currentTab === 'arbre') {
+    renderTree();
+    const u = UPGRADES.find(x => x.id === treeSel);
+    if (u) shopList.appendChild(upgradeCard(u));
+    const hint = document.createElement('div');
+    hint.className = 'treeHint';
+    hint.textContent = T('Touche un cercle pour l’améliorer, touche encore pour monter de niveau. Tu choisis l’ordre !');
+    shopList.appendChild(hint);
+    return;
+  }
+  for (const u of UPGRADES.filter(u => u.tab === currentTab && (!u.modes || u.modes.includes(state.run.mode)) && (TEST_MODE === 'riche' || (u.stage || 0) <= stageSeen() + 1))) shopList.appendChild(upgradeCard(u));
+}
+// La fiche d'une amélioration (illustration, niveau, effet actuel → suivant, prix)
+function upgradeCard(u) {
+  {
     const card = document.createElement('div');
     card.className = 'card upgCard' + (shopGuide === u.id ? ' guide' : '');
     const lockReason = upgradeLock(u);
@@ -8311,9 +8376,145 @@ function renderShop() {
       if (lastBought.id === u.id && performance.now() - lastBought.t < 600) card.classList.add('bought');
     }
     card.append(ico, body, btn);
-    shopList.appendChild(card);
+    return card;
   }
 }
+
+// ---------- L'arbre ----------
+// Quatre branches autour de la toupie. Aucune chaîne : chaque amélioration est reliée directement au centre,
+// on achète dans l'ordre qu'on veut (seules les vagues et les stades débloquent de nouveaux cercles).
+const BRANCHES = [
+  { name: T('Attaque'), ang: -90, c: '#ff8a66', ids: ['diametre', 'poids', 'lames', 'critique', 'agressivite', 'feu', 'eclair'] },
+  { name: T('Endurance'), ang: 0, c: '#62d98f', ids: ['endurance', 'pointe', 'inertie', 'rebond', 'equilibre', 'souffle', 'tornade'] },
+  { name: T('Lanceur'), ang: 90, c: '#6cb2ff', ids: ['puissance', 'elan', 'recharge', 'precision', 'multi'] },
+  { name: T('Bureau'), ang: 180, c: '#cf9bff', ids: ['appat', 'trampoline', 'nid', 'combo', 'prime', 'chance'] },
+];
+const RINGS = { 1: [1], 2: [2], 3: [2, 1], 4: [2, 2], 5: [2, 3], 6: [2, 2, 2], 7: [2, 3, 2], 8: [2, 3, 3] };
+let lastNope = { id: '', t: 0 };
+let treeCenter = true; // recentrer l'arbre (petits écrans : on le fait glisser du doigt)
+function renderTree() {
+  const outer = $('tree'), view = outer.parentElement;
+  const vw = outer.clientWidth, vh = outer.clientHeight;
+  const sl = outer.scrollLeft, st = outer.scrollTop;
+  outer.replaceChildren();
+  if (!vw || !vh) { shopDirty = true; return; }
+  // Sur un petit écran, l'arbre garde une taille minimale et on le fait glisser
+  const W = Math.max(vw, 640), H = Math.max(vh, 600);
+  const tree = document.createElement('div');
+  tree.className = 'treeIn';
+  tree.style.width = W + 'px'; tree.style.height = H + 'px';
+  outer.append(tree);
+  const m = Math.min(W, H);
+  const d = Math.round(Math.max(44, Math.min(56, m * 0.085)));
+  const cd = Math.round(Math.max(96, Math.min(150, m * 0.2)));
+  const cx = W / 2, cy = H / 2;
+  tree.append(previewCanvas);
+  tree.style.setProperty('--cx', cx + 'px');
+  tree.style.setProperty('--cy', cy + 'px');
+  tree.style.setProperty('--cd', cd + 'px');
+  if (treeCenter) { outer.scrollLeft = (W - vw) / 2; outer.scrollTop = (H - vh) / 2; treeCenter = false; }
+  else { outer.scrollLeft = sl; outer.scrollTop = st; }
+  const Rx = W / 2 - d / 2 - 44, Ry = H / 2 - d / 2 - 30;
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'threads');
+  tree.append(svg);
+  const assigned = new Set(BRANCHES.flatMap(b => b.ids));
+  const now = performance.now();
+  for (const br of BRANCHES) {
+    const extra = br.ang === 180 ? UPGRADES.filter(u => !assigned.has(u.id)).map(u => u.id) : [];
+    const list = [...br.ids, ...extra].map(id => UPGRADES.find(u => u.id === id)).filter(u => u && (!u.modes || u.modes.includes(state.run.mode)));
+    const base = br.ang * Math.PI / 180;
+    const R = Math.abs(Math.cos(base)) > 0.5 ? Rx : Ry; // rayon dans la direction de la branche
+    const inner = Math.min(0.75, (cd / 2 + d * 1.45 + (Math.abs(Math.cos(base)) > 0.5 ? 26 : 0)) / R);
+    // Branches du haut et du bas : moins de hauteur, donc deux anneaux plus larges
+    const vert = Math.abs(Math.cos(base)) < 0.5;
+    const rings = (vert && { 6: [2, 4], 7: [2, 5], 8: [3, 5] }[list.length]) || RINGS[list.length] || [Math.ceil(list.length / 2), Math.floor(list.length / 2)];
+    // Étiquette de la branche, collée au gros cercle
+    const lab = document.createElement('div');
+    lab.className = 'tbranch';
+    lab.style.setProperty('--c', br.c);
+    lab.textContent = br.name;
+    const lr = cd / 2 - 8;
+    lab.style.left = cx + Math.cos(base) * lr + 'px';
+    lab.style.top = cy + Math.sin(base) * lr + 'px';
+    let k = 0;
+    rings.forEach((count, ri) => {
+      const f = rings.length === 1 ? (inner + 1) / 2 : inner + (1 - inner) * ri / (rings.length - 1);
+      const rpx = f * R;
+      // Les cercles d'un anneau sont espacés en pixels (place pour le nom et le prix), sur un arc léger
+      const horiz = Math.abs(Math.cos(base)) > 0.5;
+      const gap = horiz ? d + 44 : Math.max(d + 46, 106);
+      for (let j = 0; j < count; j++, k++) {
+        const u = list[k];
+        if (!u) continue;
+        const off = (j - (count - 1) / 2) * gap, bend = 0.5 * off * off / rpx;
+        const x = cx + Math.cos(base) * (rpx - bend) - Math.sin(base) * off, y = cy + Math.sin(base) * (rpx - bend) + Math.cos(base) * off;
+        const hidden = !(TEST_MODE === 'riche' || (u.stage || 0) <= stageSeen() + 1);
+        const lock = hidden ? 'stade' : upgradeLock(u);
+        const level = lv(u.id), maxed = level >= u.max;
+        // Le fil : part du centre dans la direction de la branche puis s'incurve vers le cercle
+        const path = document.createElementNS(NS, 'path');
+        const qx = cx + Math.cos(base) * inner * R * 0.75, qy = cy + Math.sin(base) * inner * R * 0.75;
+        path.setAttribute('d', `M${cx},${cy} Q${qx},${qy} ${x},${y}`);
+        path.setAttribute('stroke', level > 0 ? br.c : lock ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.22)');
+        if (lock) path.setAttribute('stroke-dasharray', '3 6');
+        if (level > 0) path.setAttribute('stroke-opacity', String(0.45 + 0.55 * level / u.max));
+        svg.append(path);
+        // Le cercle
+        const n = document.createElement('button');
+        n.className = 'tnode' + (lock ? ' locked' : '') + (maxed ? ' maxed' : '') + (treeSel === u.id ? ' sel' : '') + (shopGuide === u.id ? ' guide' : '');
+        n.style.left = x + 'px'; n.style.top = y + 'px';
+        n.style.setProperty('--d', d + 'px');
+        n.style.setProperty('--c', br.c);
+        n.style.setProperty('--p', (hidden ? 0 : Math.round(100 * level / u.max)) + '%');
+        const inn = document.createElement('div');
+        inn.className = 'in';
+        if (hidden) { const e = document.createElement('span'); e.className = 'emo'; e.textContent = '❔'; inn.append(e); }
+        else if (ICON_STYLE && UPGRADE_ICON[u.id]) inn.append(iconEl(UPGRADE_ICON[u.id]));
+        else { const e = document.createElement('span'); e.className = 'emo'; e.textContent = (u.name.match(EMO_RE) || ['🌀'])[0]; inn.append(e); }
+        n.append(inn);
+        const nm = document.createElement('span');
+        nm.className = 'nm';
+        const need = Math.max(1, (u.wave || 1) - (metaLevel('catalogue') ? 2 : 0));
+        nm.textContent = hidden ? '???' : lock ? (state.run.wave < need ? T('Vague {0}', need) : '🔒') : u.name.replace(EMO_RE, '').trim();
+        n.append(nm);
+        if (!hidden && level > 0) { const l = document.createElement('span'); l.className = 'lv'; l.textContent = maxed ? 'MAX' : level; n.append(l); }
+        if (!lock && !maxed) {
+          const pr = document.createElement('span');
+          pr.className = 'pr';
+          pr.textContent = fmtMoney(costOf(u));
+          n.append(pr);
+          n.dataset.cost = costOf(u);
+          if (state.run.cash >= costOf(u)) n.classList.add('can');
+        }
+        if (lastBought.id === u.id && now - lastBought.t < 500) {
+          n.classList.add('bought');
+          const p = document.createElement('div');
+          p.className = 'tplus';
+          p.textContent = '+1';
+          p.style.left = x + 'px'; p.style.top = (y - d * 0.8) + 'px';
+          tree.append(p);
+        }
+        if (lastNope.id === u.id && now - lastNope.t < 400) n.classList.add('nope');
+        n.setAttribute('aria-label', hidden ? '???' : u.name);
+        n.onclick = () => {
+          treeSel = u.id;
+          if (!lock && !maxed) {
+            const before = lv(u.id);
+            const times = lotOf(u).n || 1;
+            for (let i = 0; i < times; i++) buy(u);
+            if (lv(u.id) === before) { lastNope = { id: u.id, t: performance.now() }; SFX.play('boing'); }
+          }
+          shopDirty = true;
+        };
+        tree.append(n);
+      }
+    });
+    tree.append(lab);
+  }
+}
+window.addEventListener('resize', () => { if (shopEl.classList.contains('open')) shopDirty = true; });
 
 function renderStats() {
   const rows = (title, list) => {
@@ -8416,6 +8617,7 @@ function updateHud() {
 
   // Boutons d'achat : activés/désactivés selon l'argent, sans tout reconstruire
   let canBuy = false;
+  for (const n of document.querySelectorAll('.tnode[data-cost]')) n.classList.toggle('can', state.run.cash >= Number(n.dataset.cost));
   for (const btn of shopList.querySelectorAll('button[data-cost]')) {
     if (btn.dataset.cost === '') continue;
     btn.disabled = state.run.cash < Number(btn.dataset.cost);
