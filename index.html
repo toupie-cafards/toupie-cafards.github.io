@@ -49,6 +49,9 @@
     font: 15px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; user-select: none; -webkit-user-select: none; }
   #game { position: fixed; inset: 0; touch-action: none; }
   #game canvas { display: block; }
+  /* Léger vignettage : le regard va au centre du bureau */
+  #game::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse 78% 72% at 50% 52%, rgba(0,0,0,0) 58%, rgba(12,6,2,.38) 100%); }
 
   #hud { position: fixed; top: 10px; left: 10px; padding: 10px 14px; background: var(--panel); border-radius: 12px;
     pointer-events: none; width: 210px; }
@@ -1220,7 +1223,7 @@ if (ICON_STYLE) {
     }
   }).observe(document.body, { childList: true, subtree: true, characterData: true });
 }
-const BUG_VISUAL = 1.35;       // les insectes sont dessinés un peu plus gros que leur zone de contact
+const BUG_VISUAL = 1.55;       // les insectes sont dessinés un peu plus gros que leur zone de contact
 const COMBO_CAP = 4;           // le bonus de combo ne dépasse jamais ×4
 const BUG_GRIP = 5;            // adhérence des insectes : fait rebondir la toupie
 // Mode Histoire
@@ -1722,6 +1725,9 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// Rendu « filmique » : plus de contraste et des couleurs plus riches qu'un rendu brut
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
 container.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -1802,15 +1808,44 @@ function placeCamera() {
 }
 
 // Lumières
-const hemiLight = new THREE.HemisphereLight(0xfff1dc, 0x3a2a1e, 0.75);
+const hemiLight = new THREE.HemisphereLight(0xfff1dc, 0x3a2a1e, 0.35);
 scene.add(hemiLight);
-const lamp = new THREE.DirectionalLight(0xffe2b8, 1.6);
+const lamp = new THREE.DirectionalLight(0xffe2b8, 1.45);
 lamp.position.set(-0.6, 1.6, 0.4);
 lamp.castShadow = true;
-lamp.shadow.mapSize.set(1024, 1024);
+lamp.shadow.mapSize.set(2048, 2048);
 Object.assign(lamp.shadow.camera, { left: -1, right: 1, top: 1, bottom: -1, near: 0.5, far: 3.5 });
 lamp.shadow.bias = -0.0005;
+lamp.shadow.normalBias = 0.004;
 scene.add(lamp);
+// Le halo chaud de la lampe de bureau : le centre du plateau est plus lumineux que les bords
+const lampPool = new THREE.SpotLight(0xffc98a, 5.5, 3.4, 0.7, 0.9, 1.3);
+lampPool.position.set(-0.35, 1.35, -0.5);
+lampPool.target.position.set(0.05, 0, 0.12);
+scene.add(lampPool, lampPool.target);
+// Contre-jour froid venu du fond (fenêtre) : il dessine le bord des carapaces et des toupies
+const rimLight = new THREE.DirectionalLight(0xa8c8ff, 0.55);
+rimLight.position.set(0.9, 0.8, -1.4);
+scene.add(rimLight);
+// Reflets : une petite « pièce » lumineuse (lampe chaude, fenêtre froide, plafond) sert d'environnement
+// à tous les matériaux : les métaux, le vernis et les carapaces brillent enfin
+function makeRoomEnv(r) {
+  const pm = new THREE.PMREMGenerator(r);
+  const room = new THREE.Scene();
+  room.add(new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), new THREE.MeshBasicMaterial({ color: 0x2e2118, side: THREE.BackSide })));
+  const panel = (w, h, color, k, x, y, z) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(k), side: THREE.DoubleSide }));
+    m.position.set(x, y, z); m.lookAt(0, 0, 0); room.add(m);
+  };
+  panel(2.6, 2.6, 0xffd9a8, 5, -2.6, 4, 1.2);  // la lampe
+  panel(4, 2.2, 0xbcd8ff, 2.2, 4.2, 2.2, -3);   // la fenêtre
+  panel(7, 7, 0xfff1dc, 0.7, 0, 4.9, 0);         // le plafond
+  const tex = pm.fromScene(room, 0.04).texture;
+  pm.dispose();
+  return tex;
+}
+const roomEnv = makeRoomEnv(renderer);
+scene.environment = roomEnv;
 
 // Bureau en bois (texture générée)
 function woodCanvas(base, line) {
@@ -1830,13 +1865,58 @@ function woodCanvas(base, line) {
   }
   return c;
 }
-const deskTex = new THREE.CanvasTexture(woodCanvas('#9b6a3e', r => `rgba(${60 + r * 40}, ${35 + r * 20}, 15, ${0.08 + r * 0.18})`));
-deskTex.wrapS = deskTex.wrapT = THREE.RepeatWrapping;
-deskTex.repeat.set(2, 1);
+// Le plateau : des lattes de bois dans le sens de la largeur, chacune avec sa teinte, son veinage et ses nœuds
+function deskCanvas() {
+  const W = 1024, H = 1024, c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const planks = 7, ph = H / planks;
+  for (let p = 0; p < planks; p++) {
+    const y0 = p * ph, tint = (Math.sin(p * 2.7) * 0.5 + 0.5);
+    const grd = g.createLinearGradient(0, y0, W, y0 + ph);
+    grd.addColorStop(0, `hsl(${27 + tint * 4}, ${44 + tint * 8}%, ${31 + tint * 6}%)`);
+    grd.addColorStop(0.5, `hsl(${25 + tint * 5}, ${47 + tint * 6}%, ${35 + tint * 5}%)`);
+    grd.addColorStop(1, `hsl(${28 + tint * 3}, ${42 + tint * 8}%, ${30 + tint * 6}%)`);
+    g.fillStyle = grd;
+    g.fillRect(0, y0, W, ph);
+    // Veinage : de longues lignes ondulées
+    for (let i = 0; i < 46; i++) {
+      const y = y0 + Math.random() * ph, a = 0.05 + Math.random() * 0.16, dark = Math.random() < 0.75;
+      g.strokeStyle = dark ? `rgba(55, 28, 10, ${a})` : `rgba(255, 215, 160, ${a * 0.6})`;
+      g.lineWidth = 0.6 + Math.random() * 2.2;
+      g.beginPath();
+      const f = 0.004 + Math.random() * 0.01, amp = 1.5 + Math.random() * 4, ph0 = Math.random() * 9;
+      for (let x = 0; x <= W; x += 16) { const yy = y + Math.sin(x * f + ph0) * amp; if (x) g.lineTo(x, Math.min(y0 + ph - 1, Math.max(y0 + 1, yy))); else g.moveTo(x, yy); }
+      g.stroke();
+    }
+    // Un ou deux nœuds par latte
+    for (let k = 0; k < 1 + (p % 2); k++) {
+      const kx = 80 + Math.random() * (W - 160), ky = y0 + ph * (0.3 + Math.random() * 0.4), kr = 6 + Math.random() * 9;
+      for (let r = kr * 3; r > 0; r -= 2.2) {
+        g.strokeStyle = `rgba(60, 30, 10, ${0.05 + 0.25 * (1 - r / (kr * 3))})`;
+        g.lineWidth = 1.2;
+        g.beginPath(); g.ellipse(kx, ky, r * 2.2, r * 0.7, 0, 0, Math.PI * 2); g.stroke();
+      }
+      g.fillStyle = 'rgba(50, 24, 8, .55)';
+      g.beginPath(); g.ellipse(kx, ky, kr * 0.9, kr * 0.45, 0, 0, Math.PI * 2); g.fill();
+    }
+    // Le joint entre deux lattes, et les bouts de lattes décalés
+    g.fillStyle = 'rgba(30, 14, 5, .55)';
+    g.fillRect(0, y0, W, 2);
+    g.fillStyle = 'rgba(255, 220, 170, .08)';
+    g.fillRect(0, y0 + 2, W, 1);
+    const cut = (p * 397) % W;
+    g.fillStyle = 'rgba(30, 14, 5, .45)';
+    g.fillRect(cut, y0, 2, ph);
+  }
+  return c;
+}
+const deskTex = new THREE.CanvasTexture(deskCanvas());
 deskTex.colorSpace = THREE.SRGBColorSpace;
+deskTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 const desk = new THREE.Mesh(
   new THREE.BoxGeometry(DESK_X * 2 + 0.06, 0.04, DESK_Z * 2 + 0.06),
-  new THREE.MeshStandardMaterial({ map: deskTex, roughness: 0.75 })
+  new THREE.MeshStandardMaterial({ map: deskTex, bumpMap: deskTex, bumpScale: 0.0012, roughness: 0.5, envMapIntensity: 0.45 })
 );
 desk.position.y = -0.02;
 desk.receiveShadow = true;
@@ -7872,7 +7952,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-14.1';
+const VERSION = '2026-11-14.2';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -9137,6 +9217,8 @@ function frame(now) {
     autoBtn.cap.material.emissive.setHex(on ? 0x1f9a35 : 0x400000);
     autoBtn.cap.material.emissiveIntensity = on ? 0.6 + 0.4 * Math.sin(performance.now() / 180) : 0.4;
   }
+  scene.environment = nest ? null : roomEnv; // dans le nid (rouge et sombre), pas de reflets de la pièce
+  desk.material.bumpScale = nest ? 0 : 0.0012; // ni les joints des lattes du bureau
   // Secousse de l'écran : on décale un instant la caméra le temps de dessiner l'image
   if (shake > 0.0002) {
     const ox = (Math.random() - 0.5) * shake, oy = (Math.random() - 0.5) * shake;
