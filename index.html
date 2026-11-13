@@ -142,15 +142,42 @@
     color: var(--gold); font-weight: 800; font-size: 20px; pointer-events: none; font-variant-numeric: tabular-nums; }
   #closeShop { position: absolute; left: 14px; bottom: 14px; border: 0; border-radius: 12px; padding: 12px 18px; cursor: pointer;
     background: var(--accent); color: #1a1410; font-weight: 800; font-size: 15px; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
-  .shopSide { width: min(400px, 46vw); display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid rgba(255,255,255,.1); min-height: 0; }
-  .shopHead { display: flex; align-items: center; gap: 6px; padding: 10px; border-bottom: 1px solid rgba(255,255,255,.1); }
-  .tabs { display: grid; grid-template-columns: 2fr 1fr; gap: 4px; flex: 1; }
-  .tabs button { border: 0; border-radius: 8px; padding: 8px 4px; background: var(--panel-2); color: var(--text);
-    font-weight: 700; font-size: 12px; cursor: pointer; white-space: nowrap; }
-  .tabs button.active { background: var(--accent); color: #1a1410; }
+  /* Onglets Stats : un panneau posé sur la vue (plus de colonne à droite) */
+  .shopSide { display: none; position: absolute; left: 50%; transform: translateX(-50%); top: 12px; bottom: 76px; width: min(460px, 94%); z-index: 6;
+    flex-direction: column; background: var(--panel); border: 1px solid rgba(255,255,255,.12); border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.5); min-height: 0; }
+  #shop.stats .shopSide { display: flex; }
   #shopList { overflow-y: auto; padding: 10px; flex: 1; }
+  /* La barre du bas : un onglet par arbre */
+  .wsBar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; align-items: center; justify-content: center; z-index: 5;
+    background: linear-gradient(to top, rgba(20,13,8,.96), rgba(20,13,8,.75)); border-top: 1px solid rgba(255,255,255,.08); }
+  .tabs { display: flex; gap: 6px; padding: 0 8px; }
+  .tabs button { border: 0; border-radius: 12px; padding: 10px 14px; background: var(--panel-2); color: var(--text);
+    font-weight: 800; font-size: 14px; cursor: pointer; white-space: nowrap; transition: transform .15s, background .15s; }
+  .tabs button.active { background: var(--accent); color: #1a1410; transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,.4); }
+  .wsBuy { position: absolute; top: 12px; right: 14px; z-index: 5; display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 12px; background: var(--panel);
+    font-size: 12px; color: var(--muted); }
+  .wsBuy:empty, .wsHint:empty, .wsNest:empty { display: none; }
+  .wsBuy button { border: 0; border-radius: 8px; padding: 5px 10px; font-weight: 800; background: var(--panel-2); color: var(--text); cursor: pointer; }
+  .wsBuy button.on { background: var(--accent); color: #1a1410; }
+  .wsHint { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); z-index: 5; max-width: min(92%, 520px); text-align: center; pointer-events: none;
+    font-size: 13px; font-weight: 700; color: #f3e6d2; background: rgba(20,13,8,.82); padding: 6px 12px; border-radius: 10px; }
+  .wsHint.guideNote { color: #1a1410; background: var(--green); }
+  .wsNest { position: absolute; right: 12px; bottom: 74px; width: min(290px, 56%); z-index: 5; }
+  .wsNest .card { margin: 0; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+  /* Appui long sur un cercle : où en est cette amélioration */
+  .treeTip { position: absolute; z-index: 7; width: min(260px, 80vw); padding: 10px 12px; border-radius: 12px; pointer-events: none;
+    background: rgba(24,16,10,.97); border: 2px solid var(--c, var(--gold)); box-shadow: 0 8px 26px rgba(0,0,0,.6); opacity: 0; transition: opacity .15s; }
+  .treeTip.on { opacity: 1; }
+  .treeTip .th { display: flex; justify-content: space-between; gap: 8px; font-weight: 900; font-size: 15px; color: #fff3e0; }
+  .treeTip .th b { color: var(--c, var(--gold)); font-size: 13px; white-space: nowrap; }
+  .treeTip .tb { height: 6px; border-radius: 3px; background: rgba(255,255,255,.12); margin: 6px 0; overflow: hidden; }
+  .treeTip .tb i { display: block; height: 100%; background: var(--c, var(--gold)); }
+  .treeTip .td { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+  .treeTip .tv { margin-top: 6px; font-size: 13.5px; font-weight: 800; color: #fff; }
+  .treeTip .tv .nx { color: var(--green); }
+  .treeTip .ts { margin-top: 4px; font-size: 12px; color: var(--gold); }
   /* Arbre des améliorations : un gros cercle au centre (la toupie en 3D), chaque amélioration est un cercle relié au centre par un fil */
-  #tree { position: absolute; inset: 0; display: none; overflow: auto; scrollbar-width: none; }
+  #tree { position: absolute; inset: 0 0 64px 0; display: none; overflow: auto; scrollbar-width: none; }
   #tree::-webkit-scrollbar { display: none; }
   #tree .treeIn { position: relative; }
   #shop.tree #tree { display: block; }
@@ -160,7 +187,9 @@
   .workshopTitle, .workshopMoney, #closeShop { z-index: 5; }
   #tree .threads { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   #tree .threads path { fill: none; stroke-width: 2.5; stroke-linecap: round; }
+  #tree .threads ellipse { fill: none; stroke: rgba(255,230,190,.07); stroke-width: 1.5; stroke-dasharray: 2 7; }
   .tnode { position: absolute; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); border-radius: 50%; border: 0; padding: 4px; cursor: pointer; z-index: 3;
+    -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
     background: conic-gradient(var(--c) var(--p), rgba(255,255,255,.13) 0); transition: transform .15s; -webkit-tap-highlight-color: transparent; }
   .tnode .in { width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #5a4634, #22170f 80%); transition: box-shadow .25s; }
   .tnode .in .ic { width: 60%; height: 60%; vertical-align: 0; }
@@ -179,6 +208,7 @@
   .tnode.maxed .in { background: radial-gradient(circle at 35% 30%, #fff6d0, #e8b030 75%); }
   .tnode.sel { transform: scale(1.14); z-index: 4; }
   .tnode.sel .in { outline: 2px solid #fff; outline-offset: 2px; }
+  .tnode.peek { transform: scale(1.18); z-index: 4; }
   .tnode:not(.locked):active { transform: scale(.9); }
   .tnode.bought { animation: tPop .4s ease-out; }
   @keyframes tPop { 40% { transform: scale(1.3); } }
@@ -188,18 +218,18 @@
   .tnode.guide::after { content: '👆'; position: absolute; left: 60%; top: 85%; font-size: 28px; animation: guideHand .9s ease-in-out infinite; pointer-events: none; }
   .tplus { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 18px; color: var(--gold); text-shadow: 0 2px 3px #000; pointer-events: none; z-index: 6;
     animation: rise .8s ease-out forwards; }
-  .tbranch { position: absolute; transform: translate(-50%, -50%); font-size: 12px; font-weight: 900; letter-spacing: .5px; padding: 3px 10px; border-radius: 10px; z-index: 4;
-    background: rgba(20,14,10,.88); border: 1.5px solid var(--c); color: var(--c); pointer-events: none; white-space: nowrap; text-transform: uppercase; }
-  .treeHint { color: var(--muted); font-size: 13px; text-align: center; margin: 4px 0 10px; }
-  @media (max-aspect-ratio: 1/1) { #shop.tree .workshopView { height: 58vh; } }
-  @media (max-aspect-ratio: 1/1) {
-    #shop { flex-direction: column; }
-    .workshopView { flex: none; height: 38vh; }
-    .shopSide { width: 100%; flex: 1; border-left: 0; border-top: 1px solid rgba(255,255,255,.1); }
+  #closeShop { bottom: 10px; z-index: 6; }
+  @media (max-width: 900px) and (min-width: 641px) { .wsBar { justify-content: flex-end; } }
+  @media (max-width: 640px) {
     .workshopTitle { font-size: 14px; }
     .workshopMoney { top: 46px; font-size: 16px; }
-    #closeShop { padding: 9px 14px; font-size: 14px; }
+    #closeShop { top: 10px; right: 10px; left: auto; bottom: auto; padding: 9px 14px; font-size: 14px; }
+    .wsBuy { top: 58px; right: 10px; }
+    .tabs button { padding: 9px 10px; font-size: 13px; }
   }
+  @media (max-width: 520px) { .workshopTitle { display: none; } .workshopMoney { top: 12px; } .wsBuy { top: 56px; } }
+  @media (max-height: 430px) { .workshopTitle { display: none; } .workshopMoney { top: 10px; } }
+  @media (max-width: 430px) { .tabs { gap: 4px; padding: 0 4px; } .tabs button { padding: 9px 7px; font-size: 12px; } }
   .card { background: var(--panel-2); border-radius: 10px; padding: 10px; margin-bottom: 8px; display: grid;
     grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
   .card .name { font-weight: 800; }
@@ -368,6 +398,19 @@
   .lbRow.top1 .rk { color: #ffd45a; font-size: 20px; } .lbRow.top2 .rk { color: #d8dde3; font-size: 18px; } .lbRow.top3 .rk { color: #d08a4a; font-size: 17px; }
   .lbRow.me { background: linear-gradient(135deg, #4a3a10, #2a2008); border: 1px solid #ffd45a; }
   .lbRow .wv { color: #7fd1ff; white-space: nowrap; }
+  /* Défi du jour */
+  .modeBtn.dailyBtn { border-color: rgba(108,178,255,.65); background: linear-gradient(135deg, rgba(48,86,150,.55), rgba(30,22,16,.92)); }
+  .modeBtn.dailyBtn.pulse { animation: dailyPulse 1.3s ease-in-out infinite; }
+  @keyframes dailyPulse { 50% { box-shadow: 0 0 0 3px rgba(108,178,255,.55), 0 0 24px rgba(108,178,255,.5); } }
+  .dailyTw { display: inline-block; margin: 6px 0 2px; padding: 3px 10px; border-radius: 9px; background: rgba(108,178,255,.18); color: #cfe4ff; font-weight: 800; font-size: 13px; }
+  body.daily #shopBtn, body.daily #speedBtn { display: none !important; }
+  .dailyScore { font-size: 52px; font-weight: 900; color: var(--gold); text-align: center; line-height: 1.05; margin: 4px 0 2px; text-shadow: 0 3px 0 rgba(0,0,0,.35); font-variant-numeric: tabular-nums; }
+  .dailySub { text-align: center; font-weight: 800; margin-bottom: 8px; }
+  .dailySub.rec { color: var(--green); }
+  .dailyGift { text-align: center; color: #cfe4ff; font-size: 14px; font-weight: 700; margin: 4px 0 8px; }
+  .dailyLb { text-align: left; margin: 8px 0 12px; }
+  .dailyLb .lbRow { padding: 6px 12px; }
+  .dailyLb .msg { text-align: center; color: var(--muted); font-size: 13px; margin-top: 4px; }
   .lbBtn { border-color: rgba(200,160,255,.35) !important; }
   #achPanel { position: fixed; inset: 0; z-index: 25; display: none; align-items: center; justify-content: center; padding: 16px;
     background: radial-gradient(ellipse at center, #2c2a1a, #0e0c05); }
@@ -595,7 +638,7 @@
   <div class="sub" id="killsLine"></div>
   <div class="hudRow"><span id="waveText"></span><b id="waveSide"></b></div>
   <div class="histoireOnly">
-    <div class="hudRow"><span>🎯 Objectif</span><b id="quotaText"></b></div>
+    <div class="hudRow"><span id="quotaLabel">🎯 Objectif</span><b id="quotaText"></b></div>
     <div class="bar"><div id="quotaBar"></div></div>
   </div>
   <div class="carnageOnly">
@@ -632,13 +675,13 @@
     <div id="tree"></div>
     <div class="workshopTitle">🏠 L’atelier de la maison</div>
     <div class="workshopMoney" id="workshopMoney"></div>
+    <div class="wsBuy" id="wsBuy"></div>
+    <div class="wsHint" id="wsHint"></div>
+    <div class="wsNest" id="wsNest"></div>
+    <div class="treeTip" id="treeTip"></div>
+    <div class="shopSide"><div id="shopList"></div></div>
+    <div class="wsBar"><div class="tabs" id="tabs"></div></div>
     <button id="closeShop">↩ Retour au bureau</button>
-  </div>
-  <div class="shopSide">
-    <div class="shopHead">
-      <div class="tabs" id="tabs"></div>
-    </div>
-    <div id="shopList"></div>
   </div>
 </aside>
 
@@ -687,6 +730,11 @@
       <div class="mt">📖 Mode Histoire</div>
       <div class="md">Repousse l’invasion vague après vague : à chaque vague, un nombre de cafards à écraser avec un nombre de lancers limité. Sinon, ils envahissent tout.</div>
       <div class="mr" id="storyRecord"></div>
+    </button>
+    <button class="modeBtn dailyBtn" id="dailyBtn">
+      <div class="mt" id="dailyTitle">📅 Défi du jour</div>
+      <div class="md" id="dailyDesc"></div>
+      <div class="mr" id="dailyRecord"></div>
     </button>
     <button class="modeBtn toyBtn" id="toyboxBtn">
       <div class="mt">📦 Le Carton à Jouets</div>
@@ -763,7 +811,7 @@
 <div id="lbPanel">
   <div class="menuBox">
     <h1>🏆 Classement</h1>
-    <div class="lbTabs"><button id="lbTabWave" class="on">Vagues</button><button id="lbTabSpeed">⏱️ Speedrun</button></div>
+    <div class="lbTabs"><button id="lbTabWave" class="on">Vagues</button><button id="lbTabDay">📅 Du jour</button><button id="lbTabSpeed">⏱️ Speedrun</button></div>
     <p class="tag" id="lbSub">Mode Histoire · meilleure vague atteinte</p>
     <div id="lbList"></div>
     <p class="tag" id="lbMsg"></p>
@@ -1016,6 +1064,8 @@ const ICONS = {
   fete: '<path d="M4 28l6-17 11 11z" fill="#f5c542"/><path d="M7 21l4 4M8.5 16.5l6 6" stroke="#e2483d" stroke-width="2"/><g stroke="none"><circle cx="20" cy="6" r="1.8" fill="#e2483d"/><circle cx="26" cy="12" r="1.6" fill="#4aa3e0"/><circle cx="15" cy="4" r="1.3" fill="#7cc24a"/><rect x="23" y="4" width="3" height="3" fill="#b58cf0" transform="rotate(30 24.5 5.5)"/><rect x="27" y="18" width="3" height="3" fill="#f5c542"/></g><path d="M14 13c3-4 4-7 3-10M18 17c4-2 7-2 10 0" stroke-width="1.6"/>',
   trefle: '<g fill="#7cc24a"><circle cx="11" cy="11" r="5"/><circle cx="21" cy="11" r="5"/><circle cx="11" cy="20" r="5"/><circle cx="21" cy="20" r="5"/></g><path d="M17 18c2 5 4 8 8 11" stroke-width="2.5"/><circle cx="16" cy="15.5" r="2.2" fill="#f5c542"/>',
   trampo: '<path d="M5 16l-2 12M27 16l2 12M11 18.5l-1 9.5M21 18.5l1 9.5" stroke-width="2.5"/><ellipse cx="16" cy="14" rx="13" ry="5" fill="#4aa3e0"/><ellipse cx="16" cy="14" rx="8" ry="2.6" stroke="#bfe3ff" stroke-width="1.4"/><path d="M16 1v7M12.5 4.5L16 8l3.5-3.5" stroke-width="2"/>',
+  calendrier: '<rect x="4" y="7" width="24" height="21" rx="3" fill="#fff6e8"/><path d="M4 10a3 3 0 0 1 3-3h18a3 3 0 0 1 3 3v4H4z" fill="#e2483d"/><path d="M10 4v6M22 4v6" stroke-width="2.5"/><g fill="#3b2414" stroke="none"><rect x="8.5" y="17" width="4" height="3.5" rx="1"/><rect x="14" y="17" width="4" height="3.5" rx="1"/><rect x="19.5" y="17" width="4" height="3.5" rx="1"/><rect x="8.5" y="22.5" width="4" height="3.5" rx="1"/></g>',
+  cadeau: '<rect x="5" y="13" width="22" height="15" rx="2" fill="#4aa3e0"/><rect x="3" y="9" width="26" height="6" rx="2" fill="#7fc3f0"/><path d="M16 9v19" stroke="#f5c542" stroke-width="4"/><path d="M16 9c-3-6-9-6-8-2s5 2 8 2zM16 9c3-6 9-6 8-2s-5 2-8 2z" fill="#f5c542"/>',
   // Le personnage des dialogues, avec ses expressions
   'visage-peur': ICO_FACE('<circle cx="11.5" cy="17" r="3" fill="#fff"/><circle cx="20.5" cy="17" r="3" fill="#fff"/><circle cx="11.5" cy="17.4" r="1.1" fill="#3b2414" stroke="none"/><circle cx="20.5" cy="17.4" r="1.1" fill="#3b2414" stroke="none"/><path d="M9 12.5l4-1.5M23 12.5l-4-1.5" stroke-width="1.6"/><ellipse cx="16" cy="24" rx="2.5" ry="3" fill="#7a2a20"/><path d="M26 10c1 2 2 3 1 4.5-1 1-2.5 0-2.5-1.5 0-1 .8-2 1.5-3z" fill="#7fc3f0" stroke-width="1.2"/>'),
   'visage-fatigue': ICO_FACE('<path d="M9 16l4 2-4 2M23 16l-4 2 4 2" stroke-width="1.8"/><path d="M11 25c2-2 3 0 5-1.5s3 .5 5-1" stroke-width="1.8"/>'),
@@ -1043,6 +1093,7 @@ const EMOJI_ICON = {
   '〰': 'vague', '😨': 'visage-peur', '😱': 'visage-peur', '😳': 'visage-peur', '😮': 'visage-peur', '😩': 'visage-fatigue',
   '😵': 'visage-fatigue', '😤': 'visage-colere', '😠': 'visage-colere', '😡': 'visage-colere', '🤔': 'visage-reflexion',
   '😏': 'visage-malin', '😌': 'visage-soulage', '💪': 'visage-determine', '⏱': 'montre',
+  '📅': 'calendrier', '🎁': 'cadeau', '🐘': 'pierre', '🤸': 'trampo', '🧲': 'griffe', '🔗': 'etincelles',
 };
 // L'illustration de chaque amélioration de l'atelier
 const UPGRADE_ICON = { endurance: 'montre', diametre: 'toupie', poids: 'pierre', pointe: 'gemme', lames: 'couteau', inertie: 'engrenage',
@@ -1218,7 +1269,9 @@ const INFEST_MAX = 170000; // la barre du tout dernier insecte
 //  AMÉLIORATIONS PERMANENTES (atelier) — avec leurs skins
 // =====================================================================
 const TABS = [
-  { id: 'arbre', label: T('🌀 Améliorations') },
+  { id: 'toupie', label: T('🌀 Toupie') },
+  { id: 'lanceur', label: T('🚀 Lanceur') },
+  { id: 'bureau', label: T('🪳 Bureau') },
   { id: 'stats', label: T('📊 Stats') },
 ];
 
@@ -1363,7 +1416,7 @@ const TOYBOX = [
   { id: 'trophee', icon: '🏆', name: T('Trophée du champion'), max: 3, cost: n => 120 + 100 * n,
     desc: n => T(`Le trophée de mes anciens tournois : ×{0} dégâts et ×{1} argent.`, (1 + 0.3 * n).toFixed(1), (1 + 0.3 * n).toFixed(1)) },
 ];
-function metaLevel(id) { return state.meta?.items?.[id] || 0; }
+function metaLevel(id) { return state.run?.daily ? 0 : state.meta?.items?.[id] || 0; } // défi du jour : tout le monde à égalité
 function metaBalance() { return state.meta.earned - state.meta.spent; }
 
 function smellRadius(n) { return 0.06 + 0.035 * n; }
@@ -1470,7 +1523,7 @@ const state = {
   speedX2: false,
   run: null,
 };
-const PERSISTED = ['totalMoney', 'kills', 'launches', 'bestCombo', 'killsByType', 'mode', 'introSeen', 'tutos', 'best', 'games', 'savedRuns', 'meta', 'speedX2', 'achievements', 'settings', 'maxStage', 'perfectBest', 'bestRunMoney', 'goldenKills', 'pseudo', 'lb', 'nestWins', 'autoOn', 'shareRewarded'];
+const PERSISTED = ['totalMoney', 'kills', 'launches', 'bestCombo', 'killsByType', 'mode', 'introSeen', 'tutos', 'best', 'games', 'savedRuns', 'meta', 'speedX2', 'achievements', 'settings', 'maxStage', 'perfectBest', 'bestRunMoney', 'goldenKills', 'pseudo', 'lb', 'nestWins', 'autoOn', 'shareRewarded', 'daily'];
 function load() {
   try {
     const data = JSON.parse(STORE.getItem(SAVE_KEY));
@@ -1534,7 +1587,7 @@ const lv = id => state.run.levels[id] || 0;
 function perkLevel(id) { return state.run.perks[id] || 0; }
 const isStory = () => state.run.mode === 'histoire';
 let S = computeStats(lv);
-function refreshStats() { S = computeStats(lv); }
+function refreshStats() { S = computeStats(lv); if (state.run.daily) dailyCfg?.twist.mod?.(S); }
 // Prix d'une amélioration : ×growth par niveau jusqu'au niveau 20, puis seulement ×1,3 par niveau (on peut continuer à progresser)
 function costOf(u) {
   if (u.costs) return u.costs[Math.min(lv(u.id), u.costs.length - 1)];
@@ -1571,16 +1624,17 @@ function stageTypes() {
 // Toute première vague du joueur : les cafards tombent en tas devant le lanceur et y restent,
 // pour que même un premier lancer maladroit en écrase plusieurs
 const FIRST_SPOT = { x: 0, z: -0.12, r: 0.2 };
-function firstWave() { const run = state.run; return isStory() && !nest && run.wave === 1 && run.wavesCleared === 0 && (state.best.histoire || 1) <= 1; }
+let rnd = Math.random; // hasard des apparitions d'insectes (le même pour tout le monde pendant le défi du jour)
+function firstWave() { const run = state.run; return isStory() && !nest && !run.daily && run.wave === 1 && run.wavesCleared === 0 && (state.best.histoire || 1) <= 1; }
 function refillBoard() {
   let n = bugs.filter(b => !b.dying && !b.gone).length;
   // Tous les cafards tombent en même temps (même hauteur, à peine décalés)
   const fw = firstWave();
   while (n < bugCap()) {
     if (fw) {
-      const a = Math.random() * Math.PI * 2, d = FIRST_SPOT.r * Math.sqrt(Math.random());
-      spawnBug(false, 0.7 + Math.random() * 0.08, { x: FIRST_SPOT.x + Math.cos(a) * d * 1.3, z: FIRST_SPOT.z + Math.sin(a) * d });
-    } else spawnBug(false, 0.7 + Math.random() * 0.08);
+      const a = rnd() * Math.PI * 2, d = FIRST_SPOT.r * Math.sqrt(rnd());
+      spawnBug(false, 0.7 + rnd() * 0.08, { x: FIRST_SPOT.x + Math.cos(a) * d * 1.3, z: FIRST_SPOT.z + Math.sin(a) * d });
+    } else spawnBug(false, 0.7 + rnd() * 0.08);
     n++;
   }
   spawnTimer = 0;
@@ -4577,7 +4631,7 @@ function pickBugType() {
     if (BUG_TYPES[t].rare) w *= 0.25;
     pool.push([BUG_TYPES[t], w]);
   }
-  let r = Math.random() * pool.reduce((a, [, w]) => a + w, 0);
+  let r = rnd() * pool.reduce((a, [, w]) => a + w, 0);
   for (const [t, w] of pool) { if ((r -= w) <= 0) return t; }
   return fodder;
 }
@@ -4586,14 +4640,14 @@ function pickBugType() {
 // Les affamés (Carnage) tombent dans la moitié du fond, pour laisser le temps de les intercepter.
 function randomLandingSpot(r, hungry) {
   for (let tries = 0; tries < 40; tries++) {
-    const x = (Math.random() * 2 - 1) * (DESK_X - r - 0.02);
-    const z = hungry ? -DESK_Z + r + 0.02 + Math.random() * (DESK_Z - r) : (Math.random() * 2 - 1) * (DESK_Z - r - 0.02);
+    const x = (rnd() * 2 - 1) * (DESK_X - r - 0.02);
+    const z = hungry ? -DESK_Z + r + 0.02 + rnd() * (DESK_Z - r) : (rnd() * 2 - 1) * (DESK_Z - r - 0.02);
     if (obstacles().some(o => Math.hypot(x - o.x, z - o.z) < o.r + r + 0.03)) continue;
     if (Math.abs(x - LAUNCH.x) < 0.1 && z > LAUNCH.y - 0.1) continue;
     if (tops.some(tp => !tp.falling && Math.hypot(x - tp.x, z - tp.z) < S.radius + r + 0.05)) continue;
     return [x, z];
   }
-  return [(Math.random() - 0.5) * DESK_X, -DESK_Z * 0.5];
+  return [(rnd() - 0.5) * DESK_X, -DESK_Z * 0.5];
 }
 
 function spawnBug(hungry = false, dropFrom = null, at = null) {
@@ -4606,14 +4660,14 @@ function spawnBug(hungry = false, dropFrom = null, at = null) {
   const mesh = makeBugMesh(t);
   const hp = makeHpBar();
   const bug = {
-    t, x, z, heading: Math.random() * Math.PI * 2, hp: bugHp(t), maxHp: bugHp(t),
-    tx: 0, tz: 0, pause: 0, kx: 0, kz: 0, lastHit: -1, walk: Math.random() * 10, dying: 0, ...mesh, hpBar: hp,
+    t, x, z, heading: rnd() * Math.PI * 2, hp: bugHp(t), maxHp: bugHp(t),
+    tx: 0, tz: 0, pause: 0, kx: 0, kz: 0, lastHit: -1, walk: rnd() * 10, dying: 0, ...mesh, hpBar: hp,
     hunger: hungry ? 3 * S.hungerMult : Infinity, // les affamés hésitent un peu, puis filent vers le goûter
-    mode: 'wander', gone: false, sniff: Math.random(),
-    drop: dropFrom ?? 0.35 + Math.random() * 0.6, dropV: 0, tumble: (Math.random() - 0.5) * 12, landT: 0,
+    mode: 'wander', gone: false, sniff: rnd(),
+    drop: dropFrom ?? 0.35 + rnd() * 0.6, dropV: 0, tumble: (rnd() - 0.5) * 12, landT: 0,
   };
   mesh.group.position.set(x, bug.drop, z);
-  if (!hungry && !at?.type && Math.random() < S.goldChance) {
+  if (!hungry && !at?.type && rnd() < S.goldChance) {
     bug.golden = true;
     gildBug(bug);
     try { SFX.play('evolve'); } catch { /* sons pas encore prêts */ }
@@ -4632,12 +4686,12 @@ function gildBug(b) {
 }
 function newTarget(b) {
   if (firstWave() && !b.boss) { // première vague : ils piétinent sur place
-    const a = Math.random() * Math.PI * 2, d = FIRST_SPOT.r * Math.sqrt(Math.random());
+    const a = rnd() * Math.PI * 2, d = FIRST_SPOT.r * Math.sqrt(rnd());
     b.tx = FIRST_SPOT.x + Math.cos(a) * d * 1.3; b.tz = FIRST_SPOT.z + Math.sin(a) * d;
     return;
   }
-  b.tx = (Math.random() * 2 - 1) * (DESK_X - 0.06);
-  b.tz = (Math.random() * 2 - 1) * (DESK_Z - 0.06);
+  b.tx = (rnd() * 2 - 1) * (DESK_X - 0.06);
+  b.tz = (rnd() * 2 - 1) * (DESK_Z - 0.06);
 }
 function removeBug(i) {
   const b = bugs[i];
@@ -5308,10 +5362,11 @@ function killBug(b) {
   state.totalMoney += gain;
   state.kills++;
   run.kills++;
-  run.infest += b.t.pts || 1; // l'infestation monte selon la taille des insectes écrasés
+  if (!run.daily) run.infest += b.t.pts || 1; // l'infestation monte selon la taille des insectes écrasés (pas pendant le défi du jour)
+  run.maxCombo = Math.max(run.maxCombo || 0, combo);
   run.money += gain;
   state.killsByType[b.t.id] = (state.killsByType[b.t.id] || 0) + 1;
-  if (isStory() && !nest) {
+  if (isStory() && !nest && !run.daily) {
     if (countsForQuota(b.t)) run.waveKills++;
     if (!run.cleared && run.waveKills >= waveQuota()) {
       run.cleared = true;
@@ -6627,7 +6682,7 @@ function takePerk(id) {
 const GUIDE_UPGRADE = 'diametre';
 let shopGuide = '';
 function guideTarget() {
-  if (state.tutos?.achat || !isStory() || nest) return null;
+  if (state.tutos?.achat || !isStory() || nest || state.run.daily) return null;
   const pref = UPGRADES.find(u => u.id === GUIDE_UPGRADE);
   const ok = u => !upgradeLock(u) && lv(u.id) < u.max && state.run.cash >= costOf(u);
   return ok(pref) ? pref : UPGRADES.filter(ok).sort((a, b) => costOf(a) - costOf(b))[0] || null;
@@ -6640,8 +6695,7 @@ function maybeShopGuide() {
   state.tutos.achatVu = true;
   save();
   shopGuide = u.id;
-  currentTab = 'arbre';
-  treeSel = u.id;
+  currentTab = u.tab;
   openWorkshop();
 }
 
@@ -6779,11 +6833,13 @@ function openMenu() {
   modal.classList.remove('open');
   document.getElementById('storyRecord').textContent = runLabel('histoire');
   renderDefi();
+  renderDailyBtn();
   document.getElementById('replayIntro').style.display = state.introSeen ? '' : 'none';
   openMenuRefresh();
   menuEl.classList.add('open');
 }
 function enterMode(mode, { forceIntro = false } = {}) {
+  exitDaily();
   menuEl.classList.remove('open');
   statsStep(1);
   if (state.run.mode !== mode) {
@@ -6986,6 +7042,7 @@ const DEFI_KEY = 'toupie-cafards-defi';
 let defi = null;
 try { defi = JSON.parse(STORE.getItem(DEFI_KEY)); } catch { defi = null; }
 window.__entryUrl = location.search; // adresse d'arrivée, avant que le défi n'en soit retiré (compteur)
+const JOUR_LINK = /[?&]jour=1/.test(location.search); // arrivé par un « défi du jour » partagé
 (function readDefiLink() {
   const q = new URLSearchParams(location.search);
   const w = parseInt(q.get('defi'), 10), t = parseFloat(q.get('chrono'));
@@ -6994,7 +7051,7 @@ window.__entryUrl = location.search; // adresse d'arrivée, avant que le défi n
   const de = (q.get('de') || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 16);
   defi = { w: okW ? w : 0, t: okW ? 0 : t, de, done: false };
   try { STORE.setItem(DEFI_KEY, JSON.stringify(defi)); } catch { /* stockage bloqué */ }
-  ['defi', 'chrono', 'de'].forEach(k => q.delete(k));
+  ['defi', 'chrono', 'de', 'jour'].forEach(k => q.delete(k));
   const qs = q.toString();
   try { history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash); } catch { /* adresse figée */ }
 })();
@@ -7021,7 +7078,8 @@ function checkDefiChrono(time) { if (defi && !defi.done && defi.t && time < defi
 function shareLink(kind) {
   if (!kind) return SHARE_URL;
   const q = new URLSearchParams();
-  if (kind.t) q.set('chrono', String(Math.round(kind.t * 10) / 10)); else q.set('defi', String(kind.w));
+  if (kind.j) q.set('jour', '1');
+  else if (kind.t) q.set('chrono', String(Math.round(kind.t * 10) / 10)); else q.set('defi', String(kind.w));
   const p = (state.pseudo || '').trim();
   if (p) q.set('de', p);
   return SHARE_URL + '?' + q;
@@ -7064,8 +7122,8 @@ async function shareChallenge(text, btn, kind) {
     if (kind) {
       try {
         const who = (state.pseudo || '').trim();
-        const blob = await shareCard(kind.t ? fmtClockLong(kind.t) : T('VAGUE {0}', kind.w),
-          kind.t ? T('Nid de la Reine détruit') : (who ? T('par {0}', who) : T('Mode Histoire')));
+        const blob = await shareCard(kind.j ? fmtMoney(kind.j) : kind.t ? fmtClockLong(kind.t) : T('VAGUE {0}', kind.w),
+          kind.j ? T('Défi du jour n°{0}', kind.n) : kind.t ? T('Nid de la Reine détruit') : (who ? T('par {0}', who) : T('Mode Histoire')));
         const file = blob && new File([blob], 'toupie-cafards.png', { type: 'image/png' });
         // avec une image, certaines applis ignorent le champ « url » : on le met aussi dans le texte
         if (file && navigator.canShare && navigator.canShare({ files: [file] })) data = { title: data.title, text: text + ' ' + url, files: [file] };
@@ -7231,20 +7289,23 @@ async function lbFetch() {
 let lbKind = 'wave';
 async function openLeaderboard(kind = lbKind) {
   lbKind = typeof kind === 'string' ? kind : lbKind;
-  const speed = lbKind === 'speed';
-  document.getElementById('lbTabWave').classList.toggle('on', !speed);
+  const speed = lbKind === 'speed', day = lbKind === 'day', kindNow = lbKind;
+  document.getElementById('lbTabWave').classList.toggle('on', lbKind === 'wave');
+  document.getElementById('lbTabDay').classList.toggle('on', day);
   document.getElementById('lbTabSpeed').classList.toggle('on', speed);
-  document.getElementById('lbSub').textContent = speed ? T('Détruire le nid le plus vite possible · depuis la vague 1') : T('Mode Histoire · meilleure vague atteinte');
+  const cfg = dailyConfig();
+  document.getElementById('lbSub').textContent = day ? T('Défi du jour n°{0} · {1} {2} · argent gagné en {3} lancers', cfg.n, cfg.twist.icon, cfg.twist.name, DAILY_LAUNCHES)
+    : speed ? T('Détruire le nid le plus vite possible · depuis la vague 1') : T('Mode Histoire · meilleure vague atteinte');
   const list = document.getElementById('lbList'), msg = document.getElementById('lbMsg');
   document.getElementById('lbPanel').classList.add('open');
   list.replaceChildren();
   if (!lbReady()) { msg.textContent = T('🔧 Le classement en ligne arrive très bientôt !'); return; }
   msg.textContent = T('Chargement…');
-  await (speed ? lbSubmitSpeed() : lbSubmit());
-  if (lbKind !== (speed ? 'speed' : 'wave')) return; // on a changé d'onglet entre-temps
+  await (day ? lbDailySubmit() : speed ? lbSubmitSpeed() : lbSubmit());
+  if (lbKind !== kindNow) return; // on a changé d'onglet entre-temps
   try {
-    const rows = await (speed ? lbFetchSpeed() : lbFetch());
-    if (lbKind !== (speed ? 'speed' : 'wave')) return;
+    const rows = await (day ? lbDailyFetch(cfg.day) : speed ? lbFetchSpeed() : lbFetch());
+    if (lbKind !== kindNow) return;
     list.replaceChildren();
     rows.forEach((e, i) => {
       const el = document.createElement('div');
@@ -7252,17 +7313,222 @@ async function openLeaderboard(kind = lbKind) {
       el.innerHTML = '<span class="rk"></span><span class="ps"></span><span class="wv"></span>';
       el.querySelector('.rk').textContent = ['🥇', '🥈', '🥉'][i] || (i + 1);
       el.querySelector('.ps').textContent = e.pseudo || '???';
-      el.querySelector('.wv').textContent = speed ? fmtClock(e.time) : T('vague ') + e.wave;
+      el.querySelector('.wv').textContent = day ? fmtMoney(e.score) : speed ? fmtClock(e.time) : T('vague ') + e.wave;
       list.appendChild(el);
     });
     msg.textContent = !(state.pseudo || '').trim() ? T('👤 Entre un pseudo dans le menu pour apparaître dans le classement.')
-      : rows.length ? '' : speed ? T('Personne n’a encore détruit le nid : à toi de jouer !') : T('Personne pour l’instant : à toi de jouer !');
+      : rows.length ? '' : day ? T('Personne n’a encore relevé le défi du jour : à toi de jouer !') : speed ? T('Personne n’a encore détruit le nid : à toi de jouer !') : T('Personne pour l’instant : à toi de jouer !');
   } catch { msg.textContent = T('📡 Classement indisponible (pas de connexion ?)'); }
 }
 document.getElementById('lbBtn').onclick = () => openLeaderboard();
 document.getElementById('lbTabWave').onclick = () => openLeaderboard('wave');
 document.getElementById('lbTabSpeed').onclick = () => openLeaderboard('speed');
+document.getElementById('lbTabDay').onclick = () => openLeaderboard('day');
 document.getElementById('lbClose').onclick = () => document.getElementById('lbPanel').classList.remove('open');
+
+// =====================================================================
+//  DÉFI DU JOUR : chaque jour (jour UTC), le même bureau pour tout le monde : mêmes améliorations, même twist,
+//  mêmes insectes qui tombent au même endroit. 10 lancers pour gagner le plus d'argent possible.
+//  Essais illimités, le meilleur score du jour compte. /leaderboard/jour/<jour>/<uid> = { pseudo, score, t }.
+//  Le premier défi terminé de la journée rapporte 2 🌊 (et entretient la série de jours).
+// =====================================================================
+const DAILY_START = '2026-11-13'; // défi n°1
+const DAILY_LAUNCHES = 10;
+// Une toupie « milieu de partie » pour tout le monde (vers la vague 10), puis le twist du jour par-dessus
+const DAILY_BASE = { endurance: 10, diametre: 8, poids: 8, pointe: 5, lames: 8, inertie: 5, rebond: 4, equilibre: 3, puissance: 10, elan: 6, precision: 5, appat: 8, nid: 6, combo: 5 };
+const TWISTS = [
+  { id: 'geante', icon: '🐘', name: T('Toupie géante'), desc: T('Ta toupie est énorme… et très lourde.'), levels: { diametre: 14, poids: 10 } },
+  { id: 'triple', icon: '👯', name: T('Triple toupie'), desc: T('Chaque lancer envoie trois toupies.'), levels: { multi: 2 } },
+  { id: 'or', icon: '💰', name: T('Pluie d’or'), desc: T('Un insecte sur cinq arrive tout doré : il rapporte 10 fois plus.'), mod: s => { s.goldChance = 0.2; } },
+  { id: 'feu', icon: '🔥', name: T('Bureau en feu'), desc: T('Ta toupie laisse une traînée de flammes derrière elle.'), levels: { feu: 12 } },
+  { id: 'orage', icon: '⚡', name: T('Orage'), desc: T('Chaque coup peut lancer des éclairs en chaîne.'), levels: { eclair: 12 } },
+  { id: 'tornade', icon: '🌪️', name: T('Tourbillon'), desc: T('Ta toupie aspire les insectes autour d’elle.'), levels: { tornade: 10 } },
+  { id: 'trampo', icon: '🤸', name: T('Trampolines'), desc: T('Les bords du bureau renvoient la toupie encore plus vite.'), levels: { trampoline: 10, rebond: 8 } },
+  { id: 'bonde', icon: '🪳', name: T('Bureau bondé'), desc: T('Deux fois plus d’insectes sur le bureau.'), levels: { nid: 16, appat: 12 } },
+  { id: 'chasse', icon: '🧲', name: T('Toupie affamée'), desc: T('Ta toupie fonce sur les insectes et frappe souvent en critique.'), levels: { agressivite: 12, critique: 20 } },
+  { id: 'combo', icon: '🔗', name: T('Roi du combo'), desc: T('Les combos rapportent beaucoup plus.'), levels: { combo: 25 }, perks: { braise: 3 } },
+];
+let dailyCfg = null;
+const dailyDay = () => new Date().toISOString().slice(0, 10);
+const dailyNum = day => Math.round((Date.parse(day) - Date.parse(DAILY_START)) / 86400000) + 1;
+function hashStr(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function mulberry32(a) {
+  return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+function dailyConfig(day = dailyDay()) {
+  const n = dailyNum(day), seed = hashStr('toupie-' + day);
+  // Les twists défilent dans un ordre fixe (jamais deux fois le même d'affilée), les insectes du jour selon la graine
+  const twist = TWISTS[(((n - 1) * 3) % TWISTS.length + TWISTS.length) % TWISTS.length];
+  return { day, n, seed, twist, infest: [1, 2, 2, 3][seed % 4] };
+}
+// Les résultats du jour (remis à zéro chaque jour ; la série de jours, elle, continue)
+function dailyToday(day = dailyDay()) {
+  const d = state.daily || {};
+  if (d.day !== day) state.daily = { day, best: 0, plays: 0, rewarded: false, sent: 0, last: d.last || '', streak: d.streak || 0 };
+  return state.daily;
+}
+function dailyStreakNow() {
+  const d = state.daily;
+  if (!d?.streak || !d.last) return 0;
+  const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  return d.last === dailyDay() || d.last === y ? d.streak : 0;
+}
+function renderDailyBtn() {
+  const cfg = dailyConfig(), d = state.daily?.day === cfg.day ? state.daily : null;
+  document.getElementById('dailyTitle').textContent = T('📅 Défi du jour n°{0}', cfg.n);
+  const desc = document.getElementById('dailyDesc');
+  desc.replaceChildren(T('{0} lancers, le même bureau pour tout le monde : gagne le plus d’argent possible.', DAILY_LAUNCHES), document.createElement('br'));
+  const tw = document.createElement('span');
+  tw.className = 'dailyTw';
+  tw.textContent = `${cfg.twist.icon} ${cfg.twist.name} : ${cfg.twist.desc}`;
+  desc.append(tw);
+  const parts = [d?.plays ? T('Ton record du jour : {0}', fmtMoney(d.best)) : T('🎁 +2 🌊 au premier essai du jour')];
+  const st = dailyStreakNow();
+  if (st > 1) parts.push(T('🔥 Série : {0} jours', st));
+  const left = Math.max(1, Math.ceil((Date.parse(cfg.day) + 86400000 - Date.now()) / 3600000));
+  parts.push(T('nouveau défi dans {0} h', left));
+  document.getElementById('dailyRecord').textContent = parts.join(' · ');
+  document.getElementById('dailyBtn').classList.toggle('pulse', JOUR_LINK && !d?.plays);
+}
+document.getElementById('dailyBtn').onclick = () => startDaily();
+function startDaily() {
+  const cfg = dailyCfg = dailyConfig();
+  menuEl.classList.remove('open');
+  modal.classList.remove('open');
+  statsStep(1);
+  if (nest) leaveNest();
+  clearBoard();
+  const run = newRun('histoire');
+  run.daily = cfg.day;
+  run.levels = { ...DAILY_BASE };
+  for (const [id, n] of Object.entries(cfg.twist.levels || {})) run.levels[id] = (run.levels[id] || 0) + n;
+  run.perks = { ...(cfg.twist.perks || {}) };
+  run.infest = INFEST_THRESHOLDS[cfg.infest] + 1;
+  run.stageSeen = 0;
+  run.launchesLeft = DAILY_LAUNCHES;
+  run.timed = false;
+  run.toyboxApplied = true;
+  state.run = run;
+  rnd = mulberry32(cfg.seed); // même graine pour tout le monde : mêmes insectes, aux mêmes endroits
+  document.body.classList.add('daily');
+  document.getElementById('hud').dataset.mode = 'histoire';
+  combo = 0;
+  refreshStats();
+  updateLauncherSkin();
+  rebuildTraps();
+  updateSpeedBtn();
+  previewDirty = true;
+  shopDirty = true;
+  refillBoard();
+  paused = false;
+  charging = false;
+  banner(T('📅 Défi du jour n°{0}', cfg.n), `${cfg.twist.icon} ${cfg.twist.name} · ` + T('{0} lancers : gagne le plus d’argent possible !', DAILY_LAUNCHES));
+}
+// Retour à la vraie partie (rien de la partie en cours n'a bougé pendant le défi)
+function exitDaily() {
+  if (!state.run?.daily) return;
+  clearBoard();
+  rnd = Math.random;
+  dailyCfg = null;
+  document.body.classList.remove('daily');
+  state.run = state.savedRuns[state.mode];
+  modal.classList.remove('open');
+  refreshStats();
+  updateLauncherSkin();
+  rebuildTraps();
+  updateSpeedBtn();
+  previewDirty = true;
+  shopDirty = true;
+}
+function dailyEnd() {
+  const run = state.run;
+  if (run.over) return;
+  run.over = true;
+  paused = true;
+  charging = false;
+  const cfg = dailyCfg || dailyConfig(run.daily);
+  const score = Math.round(run.money);
+  const d = dailyToday(run.daily);
+  d.plays++;
+  const record = score > d.best;
+  if (record) d.best = score;
+  let gift = false;
+  if (!d.rewarded) {
+    d.rewarded = gift = true;
+    state.meta.earned += 2;
+    const y = new Date(Date.parse(run.daily) - 86400000).toISOString().slice(0, 10);
+    d.streak = d.last === y ? (d.streak || 0) + 1 : 1;
+    d.last = run.daily;
+  }
+  save();
+  SFX.play(record ? 'achieve' : 'wave');
+  buzz(record ? [30, 40, 80] : 40);
+  modalBox.className = 'modalBox';
+  modalBox.replaceChildren();
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  const h = el('h2', '', T('📅 Défi du jour n°{0}', cfg.n));
+  const big = el('div', 'dailyScore', fmtMoney(score));
+  const sub = el('div', 'dailySub' + (record ? ' rec' : ''), record && d.plays > 1 ? T('🏆 Nouveau record du jour !') : record ? T('Ton premier score du jour !') : T('Ton record du jour : {0}', fmtMoney(d.best)));
+  const line = el('p', 'lead', T('{0} insectes écrasés en {1} lancers · meilleur combo ×{2}', fmtInt(run.kills), DAILY_LAUNCHES, run.maxCombo || 0));
+  const parts = [el('div', 'dailyGift', `${cfg.twist.icon} ${cfg.twist.name}`)];
+  if (gift) parts.push(el('div', 'dailyGift', T('🎁 Premier défi du jour : +2 🌊 pour le Carton à Jouets') + (d.streak > 1 ? T(' · 🔥 Série de {0} jours !', d.streak) : '')));
+  const lb = el('div', 'dailyLb');
+  lb.append(el('div', 'msg', lbReady() ? T('Classement du jour…') : ''));
+  const btns = el('div');
+  btns.style.cssText = 'display:flex; gap:10px; justify-content:center; flex-wrap:wrap;';
+  const again = el('button', 'bigBtn', T('🔁 Rejouer'));
+  again.onclick = startDaily;
+  const share = el('button', 'bigBtn', T('📣 Défie un ami'));
+  share.style.background = 'var(--accent)';
+  share.onclick = () => shareChallenge(T('Défi du jour n°{0} de Toupie contre Cafards : {1} en {2} lancers 🌀🪳 Tu fais mieux ? 😏', cfg.n, fmtMoney(d.best), DAILY_LAUNCHES), share, { j: d.best, n: cfg.n });
+  const menu = el('button', 'bigBtn', T('Menu'));
+  menu.style.cssText = 'background: var(--panel-2); color: var(--text)';
+  menu.onclick = () => { exitDaily(); openMenu(); };
+  btns.append(again, ...(ON_CG ? [] : [share]), menu);
+  modalBox.append(h, big, sub, line, ...parts, lb, btns);
+  modal.classList.add('open');
+  // Envoi du score puis le classement du jour (le haut du tableau, et ma place)
+  (async () => {
+    if (!lbReady()) return;
+    await lbDailySubmit();
+    try {
+      const rows = await lbDailyFetch(cfg.day);
+      if (!modal.classList.contains('open') || !lb.isConnected) return;
+      lb.replaceChildren();
+      const me = rows.findIndex(e => e.uid === state.lb?.uid);
+      const show = rows.slice(0, 5);
+      if (me >= 5) show.push(rows[me]);
+      show.forEach(e => {
+        const i = rows.indexOf(e);
+        const r = el('div', 'lbRow' + (i < 3 ? ' top' + (i + 1) : '') + (i === me ? ' me' : ''));
+        r.append(el('span', 'rk', ['🥇', '🥈', '🥉'][i] || String(i + 1)), el('span', 'ps', e.pseudo || '???'), el('span', 'wv', fmtMoney(e.score)));
+        lb.append(r);
+      });
+      lb.append(el('div', 'msg', me >= 0 ? T('Ta place : {0} sur {1} aujourd’hui', me + 1, rows.length)
+        : !(state.pseudo || '').trim() ? T('👤 Entre un pseudo dans le menu pour apparaître dans le classement.') : T('{0} joueur{1} aujourd’hui', rows.length, rows.length > 1 ? 's' : '')));
+    } catch { lb.replaceChildren(el('div', 'msg', T('📡 Classement indisponible (pas de connexion ?)'))); }
+  })();
+}
+async function lbDailySubmit() {
+  if (!lbReady() || TEST_MODE) return;
+  const d = state.daily, pseudo = (state.pseudo || '').trim();
+  if (!d || d.day !== dailyDay() || !d.plays || !pseudo) return;
+  if (d.sent === d.best && d.sentPseudo === pseudo) return;
+  try {
+    const token = await lbAuth();
+    const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/jour/${d.day}/${state.lb.uid}.json?auth=${token}`, {
+      method: 'PUT', body: JSON.stringify({ pseudo: pseudo.slice(0, 16), score: d.best, t: Date.now() }),
+    });
+    if (r.ok) { d.sent = d.best; d.sentPseudo = pseudo; save(); }
+  } catch { /* hors ligne : on réessaiera */ }
+}
+async function lbDailyFetch(day) {
+  const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/jour/${day}.json`);
+  if (!r.ok) throw new Error(T('lecture impossible'));
+  const data = (await r.json()) || {};
+  return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: e.pseudo, score: e.score, t: e.t }))
+    .sort((a, b) => b.score - a.score || a.t - b.t);
+}
 
 // Code de sauvegarde : la sauvegarde complète, en texte (base64), avec une petite vérification
 function exportSave() {
@@ -7391,8 +7657,14 @@ function openPause() {
   paused = true;
   charging = false;
   const run = state.run;
-  document.getElementById('pauseInfo').textContent =
-    T(`{0} · vague {1} · {2} · record : vague {3}`, isStory() ? T('📖 Mode Histoire') : T('🍪 Mode Carnage'), run.wave, fmtMoney(run.cash), state.best[run.mode]);
+  document.getElementById('pauseInfo').textContent = run.daily
+    ? T('📅 Défi du jour · {0} lancer{1} restant{1} · {2}', run.launchesLeft, run.launchesLeft > 1 ? 's' : '', fmtMoney(run.money))
+    : T(`{0} · vague {1} · {2} · record : vague {3}`, isStory() ? T('📖 Mode Histoire') : T('🍪 Mode Carnage'), run.wave, fmtMoney(run.cash), state.best[run.mode]);
+  // Textes des boutons : ceux du défi du jour, ou ceux d'une partie normale
+  const rd = document.getElementById('restartDesc'), qd = document.querySelector('#quitBtn .md');
+  rd.dataset.base ??= rd.textContent; qd.dataset.base ??= qd.textContent;
+  rd.textContent = run.daily ? T('Recommencer le défi du jour depuis le premier lancer (ton record du jour est gardé).') : rd.dataset.base;
+  qd.textContent = run.daily ? T('Abandonner cet essai et retourner au menu.') : qd.dataset.base;
   disarmRestart();
   pauseEl.classList.add('open');
 }
@@ -7428,11 +7700,13 @@ restartBtn.onclick = () => {
   }
   disarmRestart();
   pauseEl.classList.remove('open');
+  if (state.run.daily) { startDaily(); return; }
   restartRun();
 };
 // Quitter la partie, c'est la terminer : on garde les 🌊 gagnées, et la prochaine partie repart de la vague 1
 document.getElementById('quitBtn').onclick = () => {
   const run = state.run;
+  if (run.daily) { pauseEl.classList.remove('open'); exitDaily(); openMenu(); return; }
   const gained = run.metaGain ?? run.wavesCleared ?? 0;
   pauseEl.classList.remove('open');
   modalBox.className = 'modalBox';
@@ -7467,7 +7741,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-13.1';
+const VERSION = '2026-11-13.2';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -8027,20 +8301,18 @@ function updateCoach() {
 // =====================================================================
 const $ = id => document.getElementById(id);
 const shopEl = $('shop'), shopList = $('shopList'), tabsEl = $('tabs');
-let currentTab = 'arbre', shopDirty = true;
-let treeSel = ''; // l'amélioration sélectionnée dans l'arbre (sa fiche s'affiche à côté)
+let currentTab = 'toupie', shopDirty = true;
 
 for (const t of TABS) {
   const b = document.createElement('button');
   b.textContent = t.label;
   b.dataset.tab = t.id;
-  b.onclick = () => { currentTab = t.id; shopDirty = true; };
+  b.onclick = () => { if (currentTab !== t.id) { currentTab = t.id; treeCenter = true; hideTip(true); shopDirty = true; SFX.play('pick'); } };
   tabsEl.appendChild(b);
 }
 // Entrer dans l'atelier de la maison : le jeu continue derrière (la toupie lancée tourne toujours sur le bureau)
 function openWorkshop() {
   if (introStep >= 0) return;
-  if (!treeSel) treeSel = 'diametre';
   treeCenter = true;
   charging = false;
   previewDirty = true;
@@ -8049,6 +8321,7 @@ function openWorkshop() {
   updateHud();
 }
 function closeWorkshop() {
+  hideTip(true);
   shopEl.classList.remove('open');
 }
 $('shopBtn').onclick = openWorkshop;
@@ -8130,7 +8403,7 @@ function framePreview(width, height, center) {
   previewCam.position.set(center.x, center.y + dist * 0.35, center.z + dist);
   previewCam.lookAt(center);
 }
-function previewKind() { return currentTab === 'arbre' ? (UPGRADES.find(u => u.id === treeSel)?.tab || 'toupie') : currentTab; }
+function previewKind() { return currentTab === 'stats' ? 'toupie' : currentTab; }
 function buildPreview() {
   previewDirty = false;
   const kind = previewKind();
@@ -8248,12 +8521,17 @@ function lotOf(u) {
 function renderShop() {
   shopDirty = false;
   for (const b of tabsEl.children) b.classList.toggle('active', b.dataset.tab === currentTab);
-  shopEl.classList.toggle('tree', currentTab === 'arbre');
-  if (currentTab !== 'arbre' && previewCanvas.parentElement !== shopEl.querySelector('.workshopView')) shopEl.querySelector('.workshopView').prepend(previewCanvas);
+  const isTree = currentTab !== 'stats';
+  shopEl.classList.toggle('tree', isTree);
+  shopEl.classList.toggle('stats', !isTree);
+  const view = shopEl.querySelector('.workshopView');
+  if (!isTree && previewCanvas.parentElement !== view) view.prepend(previewCanvas);
   shopList.replaceChildren();
-  if (currentTab === 'stats') return renderStats();
-  const modeRow = document.createElement('div');
-  modeRow.className = 'buyModeRow';
+  for (const id of ['wsBuy', 'wsHint', 'wsNest']) $(id).replaceChildren();
+  $('wsHint').className = 'wsHint';
+  if (!isTree) return renderStats();
+  // Acheter ×1, ×5 ou le maximum à chaque toucher
+  const modeRow = $('wsBuy');
   modeRow.innerHTML = '<span>' + T('Acheter :') + '</span>';
   for (const [m, label] of [[1, '×1'], [5, '×5'], [999, T('Max')]]) {
     const b = document.createElement('button');
@@ -8262,17 +8540,15 @@ function renderShop() {
     b.onclick = () => { buyMode = m; shopDirty = true; };
     modeRow.appendChild(b);
   }
-  shopList.appendChild(modeRow);
+  // Premier achat guidé, sinon le petit mode d'emploi (jusqu'au premier appui long)
   const gu = !state.tutos?.achat && guideTarget();
-  if (gu && (currentTab === 'arbre' || gu.tab === currentTab)) {
-    shopGuide = gu.id;
-    if (currentTab === 'arbre' && !treeSel) treeSel = gu.id;
-    const note = document.createElement('div');
-    note.className = 'guideNote';
-    note.textContent = T('💡 Tu as assez d’argent ! Touche le prix pour acheter ta première amélioration.');
-    shopList.appendChild(note);
-  } else shopGuide = '';
-  if ((currentTab === 'arbre' || currentTab === 'bureau') && isStory() && stageSeen() >= 1) {
+  shopGuide = gu ? gu.id : '';
+  if (gu && gu.tab !== currentTab) { currentTab = gu.tab; return renderShop(); }
+  const hint = $('wsHint');
+  if (gu) { hint.classList.add('guideNote'); hint.textContent = T('💡 Tu as assez d’argent ! Touche le cercle qui brille pour l’améliorer.'); }
+  else if (!state.tutos?.bulle) hint.textContent = T('Touche un cercle pour l’améliorer · reste appuyé dessus pour voir où il en est');
+  // Le nid de la Reine (fin de l'invasion)
+  if (isStory() && stageSeen() >= 1) {
     const run = state.run, ok = stageSeen() >= 2;
     const card = document.createElement('div');
     card.className = 'card nestCard' + (ok ? '' : ' locked');
@@ -8292,227 +8568,255 @@ function renderShop() {
       btn.disabled = run.cash < NEST_COST;
       btn.onclick = startNest;
     }
-    shopList.appendChild(card);
+    $('wsNest').appendChild(card);
   }
-  if (currentTab === 'arbre') {
-    renderTree();
-    const u = UPGRADES.find(x => x.id === treeSel);
-    if (u) shopList.appendChild(upgradeCard(u));
-    const hint = document.createElement('div');
-    hint.className = 'treeHint';
-    hint.textContent = T('Touche un cercle pour l’améliorer, touche encore pour monter de niveau. Tu choisis l’ordre !');
-    shopList.appendChild(hint);
-    return;
-  }
-  for (const u of UPGRADES.filter(u => u.tab === currentTab && (!u.modes || u.modes.includes(state.run.mode)) && (TEST_MODE === 'riche' || (u.stage || 0) <= stageSeen() + 1))) shopList.appendChild(upgradeCard(u));
-}
-// La fiche d'une amélioration (illustration, niveau, effet actuel → suivant, prix)
-function upgradeCard(u) {
-  {
-    const card = document.createElement('div');
-    card.className = 'card upgCard' + (shopGuide === u.id ? ' guide' : '');
-    const lockReason = upgradeLock(u);
-    const locked = !!lockReason;
-    const level = lv(u.id), maxed = level >= u.max;
-    // Illustration
-    const ico = document.createElement('div');
-    ico.className = 'upgIco';
-    if (ICON_STYLE && UPGRADE_ICON[u.id]) ico.append(iconEl(UPGRADE_ICON[u.id]));
-    else { const e = document.createElement('span'); e.className = 'emo'; e.textContent = (u.name.match(EMO_RE) || ['🌀'])[0]; ico.append(e); }
-    // Nom + niveau, puis la barre de progression
-    const body = document.createElement('div');
-    body.className = 'upgBody';
-    const head = document.createElement('div');
-    head.className = 'upgHead';
-    head.innerHTML = '<span class="name"></span><span class="lvl"></span>';
-    head.querySelector('.name').textContent = u.name;
-    head.querySelector('.lvl').textContent = maxed ? 'MAX' : T('niv. {0} / {1}', level, u.max);
-    body.append(head);
-    const desc = document.createElement('div');
-    desc.className = 'desc';
-    desc.textContent = locked ? `🔒 ${lockReason}` : u.desc;
-    const btn = document.createElement('button');
-    if (locked) {
-      card.classList.add('locked');
-      body.append(desc);
-      btn.textContent = '🔒';
-      btn.disabled = true;
-    } else {
-      const bar = document.createElement('div');
-      bar.className = 'lvlBar';
-      bar.innerHTML = '<i></i>';
-      bar.firstChild.style.width = Math.round(100 * level / u.max) + '%';
-      body.append(bar, desc);
-      // L'effet : valeur actuelle → valeur au prochain niveau
-      const next = computeStats(id => lv(id) + (id === u.id ? 1 : 0));
-      const val = document.createElement('div');
-      val.className = 'val';
-      const cur = document.createElement('span');
-      cur.className = 'cur';
-      cur.textContent = u.fmt(S);
-      val.append(cur);
-      if (!maxed) {
-        const b = document.createElement('b');
-        b.textContent = u.fmt(next);
-        val.append('→', b);
-      }
-      body.append(val);
-      // Le prochain changement d'apparence (s'il y en a un), pour donner envie
-      const nt = !maxed && u.skins ? u.skins.find(([l]) => l > level && l <= u.max) : null;
-      if (nt) {
-        const skin = document.createElement('div');
-        skin.className = 'desc skin';
-        skin.textContent = T('✨ Niv. {0} : {1}', nt[0], nt[1]);
-        body.append(skin);
-      }
-      // En mode ×5 / Max : le prix affiché est celui de tous les niveaux qu'on peut s'offrir d'un coup
-      const lot = lotOf(u);
-      btn.textContent = maxed ? 'MAX' : lot.n > 1 ? `${fmtMoney(lot.cost)} ×${lot.n}` : fmtMoney(costOf(u));
-      btn.dataset.cost = maxed ? '' : costOf(u);
-      btn.disabled = maxed || state.run.cash < costOf(u);
-      btn.onclick = () => { const n = lotOf(u).n || 1; for (let i = 0; i < n; i++) buy(u); };
-      if (maxed) card.classList.add('maxed');
-      else if (!btn.disabled) card.classList.add('can');
-      if (lastBought.id === u.id && performance.now() - lastBought.t < 600) card.classList.add('bought');
-    }
-    card.append(ico, body, btn);
-    return card;
-  }
+  renderTree();
 }
 
-// ---------- L'arbre ----------
-// Quatre branches autour de la toupie. Aucune chaîne : chaque amélioration est reliée directement au centre,
-// on achète dans l'ordre qu'on veut (seules les vagues et les stades débloquent de nouveaux cercles).
-const BRANCHES = [
-  { name: T('Attaque'), ang: -90, c: '#ff8a66', ids: ['diametre', 'poids', 'lames', 'critique', 'agressivite', 'feu', 'eclair'] },
-  { name: T('Endurance'), ang: 0, c: '#62d98f', ids: ['endurance', 'pointe', 'inertie', 'rebond', 'equilibre', 'souffle', 'tornade'] },
-  { name: T('Lanceur'), ang: 90, c: '#6cb2ff', ids: ['puissance', 'elan', 'recharge', 'precision', 'multi'] },
-  { name: T('Bureau'), ang: 180, c: '#cf9bff', ids: ['appat', 'trampoline', 'nid', 'combo', 'prime', 'chance'] },
-];
-const RINGS = { 1: [1], 2: [2], 3: [2, 1], 4: [2, 2], 5: [2, 3], 6: [2, 2, 2], 7: [2, 3, 2], 8: [2, 3, 3] };
+// ---------- Les arbres ----------
+// Un arbre par onglet (Toupie, Lanceur, Bureau). Au centre, le gros cercle avec l'objet en 3D ; chaque amélioration est un cercle
+// relié au centre par son propre fil. Aucune chaîne : on achète dans l'ordre qu'on veut, autant de fois qu'on veut
+// (seules les vagues et les stades débloquent de nouveaux cercles). Les premiers cercles sont au plus près du centre.
+const TREE_ORDER = {
+  toupie: ['diametre', 'endurance', 'poids', 'pointe', 'lames', 'inertie', 'rebond', 'equilibre', 'critique', 'agressivite', 'feu', 'souffle', 'eclair', 'tornade'],
+  lanceur: ['puissance', 'elan', 'precision', 'recharge', 'multi'],
+  bureau: ['appat', 'nid', 'prime', 'combo', 'chance', 'trampoline'],
+};
+const TREE_ENDU = ['endurance', 'pointe', 'inertie', 'rebond', 'equilibre', 'souffle', 'tornade'];
+function nodeColor(u) { return u.tab === 'lanceur' ? '#6cb2ff' : u.tab === 'bureau' ? '#cf9bff' : TREE_ENDU.includes(u.id) ? '#62d98f' : '#ff8a66'; }
+function treeList(tab) {
+  const ids = [...(TREE_ORDER[tab] || []), ...UPGRADES.filter(u => u.tab === tab && !(TREE_ORDER[tab] || []).includes(u.id)).map(u => u.id)];
+  return ids.map(id => UPGRADES.find(u => u.id === id)).filter(u => u && u.tab === tab && (!u.modes || u.modes.includes(state.run.mode)));
+}
+const nodeHidden = u => !(TEST_MODE === 'riche' || (u.stage || 0) <= stageSeen() + 1);
 let lastNope = { id: '', t: 0 };
 let treeCenter = true; // recentrer l'arbre (petits écrans : on le fait glisser du doigt)
 function renderTree() {
-  const outer = $('tree'), view = outer.parentElement;
+  const outer = $('tree');
   const vw = outer.clientWidth, vh = outer.clientHeight;
   const sl = outer.scrollLeft, st = outer.scrollTop;
   outer.replaceChildren();
   if (!vw || !vh) { shopDirty = true; return; }
+  const list = treeList(currentTab);
+  const two = list.length > 7;
   // Sur un petit écran, l'arbre garde une taille minimale et on le fait glisser
-  const W = Math.max(vw, 640), H = Math.max(vh, 600);
+  const W = Math.max(vw, two ? 600 : 360), H = Math.max(vh, two ? 470 : 380);
   const tree = document.createElement('div');
   tree.className = 'treeIn';
   tree.style.width = W + 'px'; tree.style.height = H + 'px';
-  outer.append(tree);
+  // Écran trop petit (téléphone en paysage) : l'arbre rétrécit un peu, et on fait glisser le reste
+  const zk = Math.max(0.78, Math.min(1, vh / H, vw / W));
+  const sizer = document.createElement('div');
+  sizer.style.cssText = `position:relative;width:${W * zk}px;height:${H * zk}px`;
+  if (zk < 1) { tree.style.transform = `scale(${zk})`; tree.style.transformOrigin = '0 0'; }
+  sizer.append(tree);
+  outer.append(sizer);
   const m = Math.min(W, H);
-  const d = Math.round(Math.max(44, Math.min(56, m * 0.085)));
-  const cd = Math.round(Math.max(96, Math.min(150, m * 0.2)));
-  const cx = W / 2, cy = H / 2;
+  const dd = Math.round(Math.max(44, Math.min(two ? 60 : 70, m * (two ? 0.095 : 0.12))));
+  const cd = Math.round(Math.max(96, Math.min(170, m * (two ? 0.24 : 0.3))));
+  const cx = W / 2, cy = H / 2 + 6;
   tree.append(previewCanvas);
   tree.style.setProperty('--cx', cx + 'px');
   tree.style.setProperty('--cy', cy + 'px');
   tree.style.setProperty('--cd', cd + 'px');
-  if (treeCenter) { outer.scrollLeft = (W - vw) / 2; outer.scrollTop = (H - vh) / 2; treeCenter = false; }
+  if (treeCenter) { outer.scrollLeft = (W * zk - vw) / 2; outer.scrollTop = (H * zk - vh) / 2; treeCenter = false; }
   else { outer.scrollLeft = sl; outer.scrollTop = st; }
-  const Rx = W / 2 - d / 2 - 44, Ry = H / 2 - d / 2 - 30;
+  // Les anneaux : un seul pour un petit arbre, deux pour la toupie (le 2e décalé d'un demi-cran, ses fils passent entre les cercles du 1er)
+  const Rx = W / 2 - dd / 2 - 58, Ry = H / 2 - dd / 2 - 38, rMin = cd / 2 + dd / 2 + 34;
+  const counts = two ? [Math.ceil(list.length / 2), Math.floor(list.length / 2)] : [list.length];
+  const rings = counts.map((count, ri) => {
+    const f = two ? (ri === 0 ? 0.16 : 1) : 0.62;
+    // Anneau du milieu : un cran de départ choisi pour ne pas finir pile en bas (où sont les onglets) ni pile en haut
+    const off = two ? (ri === 0 ? 0 : 0.5) : 0.5;
+    return { count, off, rx: Math.max(rMin, rMin + (Rx - rMin) * f), ry: Math.max(rMin * 0.92, rMin + (Ry - rMin) * f) };
+  });
   const NS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('class', 'threads');
   tree.append(svg);
-  const assigned = new Set(BRANCHES.flatMap(b => b.ids));
-  const now = performance.now();
-  for (const br of BRANCHES) {
-    const extra = br.ang === 180 ? UPGRADES.filter(u => !assigned.has(u.id)).map(u => u.id) : [];
-    const list = [...br.ids, ...extra].map(id => UPGRADES.find(u => u.id === id)).filter(u => u && (!u.modes || u.modes.includes(state.run.mode)));
-    const base = br.ang * Math.PI / 180;
-    const R = Math.abs(Math.cos(base)) > 0.5 ? Rx : Ry; // rayon dans la direction de la branche
-    const inner = Math.min(0.75, (cd / 2 + d * 1.45 + (Math.abs(Math.cos(base)) > 0.5 ? 26 : 0)) / R);
-    // Branches du haut et du bas : moins de hauteur, donc deux anneaux plus larges
-    const vert = Math.abs(Math.cos(base)) < 0.5;
-    const rings = (vert && { 6: [2, 4], 7: [2, 5], 8: [3, 5] }[list.length]) || RINGS[list.length] || [Math.ceil(list.length / 2), Math.floor(list.length / 2)];
-    // Étiquette de la branche, collée au gros cercle
-    const lab = document.createElement('div');
-    lab.className = 'tbranch';
-    lab.style.setProperty('--c', br.c);
-    lab.textContent = br.name;
-    const lr = cd / 2 - 8;
-    lab.style.left = cx + Math.cos(base) * lr + 'px';
-    lab.style.top = cy + Math.sin(base) * lr + 'px';
-    let k = 0;
-    rings.forEach((count, ri) => {
-      const f = rings.length === 1 ? (inner + 1) / 2 : inner + (1 - inner) * ri / (rings.length - 1);
-      const rpx = f * R;
-      // Les cercles d'un anneau sont espacés en pixels (place pour le nom et le prix), sur un arc léger
-      const horiz = Math.abs(Math.cos(base)) > 0.5;
-      const gap = horiz ? d + 44 : Math.max(d + 46, 106);
-      for (let j = 0; j < count; j++, k++) {
-        const u = list[k];
-        if (!u) continue;
-        const off = (j - (count - 1) / 2) * gap, bend = 0.5 * off * off / rpx;
-        const x = cx + Math.cos(base) * (rpx - bend) - Math.sin(base) * off, y = cy + Math.sin(base) * (rpx - bend) + Math.cos(base) * off;
-        const hidden = !(TEST_MODE === 'riche' || (u.stage || 0) <= stageSeen() + 1);
-        const lock = hidden ? 'stade' : upgradeLock(u);
-        const level = lv(u.id), maxed = level >= u.max;
-        // Le fil : part du centre dans la direction de la branche puis s'incurve vers le cercle
-        const path = document.createElementNS(NS, 'path');
-        const qx = cx + Math.cos(base) * inner * R * 0.75, qy = cy + Math.sin(base) * inner * R * 0.75;
-        path.setAttribute('d', `M${cx},${cy} Q${qx},${qy} ${x},${y}`);
-        path.setAttribute('stroke', level > 0 ? br.c : lock ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.22)');
-        if (lock) path.setAttribute('stroke-dasharray', '3 6');
-        if (level > 0) path.setAttribute('stroke-opacity', String(0.45 + 0.55 * level / u.max));
-        svg.append(path);
-        // Le cercle
-        const n = document.createElement('button');
-        n.className = 'tnode' + (lock ? ' locked' : '') + (maxed ? ' maxed' : '') + (treeSel === u.id ? ' sel' : '') + (shopGuide === u.id ? ' guide' : '');
-        n.style.left = x + 'px'; n.style.top = y + 'px';
-        n.style.setProperty('--d', d + 'px');
-        n.style.setProperty('--c', br.c);
-        n.style.setProperty('--p', (hidden ? 0 : Math.round(100 * level / u.max)) + '%');
-        const inn = document.createElement('div');
-        inn.className = 'in';
-        if (hidden) { const e = document.createElement('span'); e.className = 'emo'; e.textContent = '❔'; inn.append(e); }
-        else if (ICON_STYLE && UPGRADE_ICON[u.id]) inn.append(iconEl(UPGRADE_ICON[u.id]));
-        else { const e = document.createElement('span'); e.className = 'emo'; e.textContent = (u.name.match(EMO_RE) || ['🌀'])[0]; inn.append(e); }
-        n.append(inn);
-        const nm = document.createElement('span');
-        nm.className = 'nm';
-        const need = Math.max(1, (u.wave || 1) - (metaLevel('catalogue') ? 2 : 0));
-        nm.textContent = hidden ? '???' : lock ? (state.run.wave < need ? T('Vague {0}', need) : '🔒') : u.name.replace(EMO_RE, '').trim();
-        n.append(nm);
-        if (!hidden && level > 0) { const l = document.createElement('span'); l.className = 'lv'; l.textContent = maxed ? 'MAX' : level; n.append(l); }
-        if (!lock && !maxed) {
-          const pr = document.createElement('span');
-          pr.className = 'pr';
-          pr.textContent = fmtMoney(costOf(u));
-          n.append(pr);
-          n.dataset.cost = costOf(u);
-          if (state.run.cash >= costOf(u)) n.classList.add('can');
-        }
-        if (lastBought.id === u.id && now - lastBought.t < 500) {
-          n.classList.add('bought');
-          const p = document.createElement('div');
-          p.className = 'tplus';
-          p.textContent = '+1';
-          p.style.left = x + 'px'; p.style.top = (y - d * 0.8) + 'px';
-          tree.append(p);
-        }
-        if (lastNope.id === u.id && now - lastNope.t < 400) n.classList.add('nope');
-        n.setAttribute('aria-label', hidden ? '???' : u.name);
-        n.onclick = () => {
-          treeSel = u.id;
-          if (!lock && !maxed) {
-            const before = lv(u.id);
-            const times = lotOf(u).n || 1;
-            for (let i = 0; i < times; i++) buy(u);
-            if (lv(u.id) === before) { lastNope = { id: u.id, t: performance.now() }; SFX.play('boing'); }
-          }
-          shopDirty = true;
-        };
-        tree.append(n);
-      }
-    });
-    tree.append(lab);
+  for (const r of rings) {
+    const e = document.createElementNS(NS, 'ellipse');
+    e.setAttribute('cx', cx); e.setAttribute('cy', cy); e.setAttribute('rx', r.rx); e.setAttribute('ry', r.ry);
+    svg.append(e);
   }
+  const now = performance.now();
+  let k = 0;
+  for (const r of rings) {
+    for (let j = 0; j < r.count; j++, k++) {
+      const u = list[k];
+      if (!u) continue;
+      const ang = (-90 + (j + r.off) * 360 / r.count) * Math.PI / 180;
+      const x = cx + Math.cos(ang) * r.rx, y = cy + Math.sin(ang) * r.ry;
+      const col = nodeColor(u);
+      const hidden = nodeHidden(u);
+      const lock = hidden ? 'stade' : upgradeLock(u);
+      const level = lv(u.id), maxed = level >= u.max;
+      // Le fil : du centre jusqu'au cercle, à peine courbé
+      const path = document.createElementNS(NS, 'path');
+      const mx = (cx + x) / 2 - (y - cy) * 0.08, my = (cy + y) / 2 + (x - cx) * 0.08;
+      path.setAttribute('d', `M${cx},${cy} Q${mx},${my} ${x},${y}`);
+      path.setAttribute('stroke', level > 0 ? col : lock ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.24)');
+      if (lock) path.setAttribute('stroke-dasharray', '3 6');
+      if (level > 0) path.setAttribute('stroke-opacity', String(0.45 + 0.55 * level / u.max));
+      svg.append(path);
+      // Le cercle
+      const n = document.createElement('button');
+      n.className = 'tnode' + (lock ? ' locked' : '') + (maxed ? ' maxed' : '') + (shopGuide === u.id ? ' guide' : '') + (tipId === u.id ? ' peek' : '');
+      n.dataset.id = u.id;
+      n.style.left = x + 'px'; n.style.top = y + 'px';
+      n.style.setProperty('--d', dd + 'px');
+      n.style.setProperty('--c', col);
+      n.style.setProperty('--p', (hidden ? 0 : Math.round(100 * level / u.max)) + '%');
+      const inn = document.createElement('div');
+      inn.className = 'in';
+      if (hidden) { const e = document.createElement('span'); e.className = 'emo'; e.textContent = '❔'; inn.append(e); }
+      else if (ICON_STYLE && UPGRADE_ICON[u.id]) inn.append(iconEl(UPGRADE_ICON[u.id]));
+      else { const e = document.createElement('span'); e.className = 'emo'; e.textContent = (u.name.match(EMO_RE) || ['🌀'])[0]; inn.append(e); }
+      n.append(inn);
+      const nm = document.createElement('span');
+      nm.className = 'nm';
+      const need = Math.max(1, (u.wave || 1) - (metaLevel('catalogue') ? 2 : 0));
+      nm.textContent = hidden ? '???' : lock ? (state.run.wave < need ? T('Vague {0}', need) : '🔒') : u.name.replace(EMO_RE, '').trim();
+      n.append(nm);
+      if (!hidden && level > 0) { const l = document.createElement('span'); l.className = 'lv'; l.textContent = maxed ? 'MAX' : level; n.append(l); }
+      if (!lock && !maxed) {
+        const pr = document.createElement('span');
+        pr.className = 'pr';
+        const lot = lotOf(u);
+        pr.textContent = lot.n > 1 ? `${fmtMoney(lot.cost)} ×${lot.n}` : fmtMoney(costOf(u));
+        n.append(pr);
+        n.dataset.cost = costOf(u);
+        if (state.run.cash >= costOf(u)) n.classList.add('can');
+      }
+      if (lastBought.id === u.id && now - lastBought.t < 500) {
+        n.classList.add('bought');
+        const p = document.createElement('div');
+        p.className = 'tplus';
+        p.textContent = '+' + Math.max(1, lastBought.n || 1);
+        p.style.left = x + 'px'; p.style.top = (y - dd * 0.8) + 'px';
+        tree.append(p);
+      }
+      if (lastNope.id === u.id && now - lastNope.t < 400) n.classList.add('nope');
+      n.setAttribute('aria-label', hidden ? '???' : u.name);
+      n.oncontextmenu = e => e.preventDefault();
+      n.onclick = () => {
+        if (pressLong) { pressLong = false; return; } // c'était un appui long : on regardait, on n'achète pas
+        if (!lock && !maxed) {
+          const before = lv(u.id);
+          const times = lotOf(u).n || 1;
+          for (let i = 0; i < times; i++) buy(u);
+          if (lv(u.id) === before) { lastNope = { id: u.id, t: performance.now() }; SFX.play('boing'); }
+          else lastBought.n = lv(u.id) - before;
+        } else { lastNope = { id: u.id, t: performance.now() }; SFX.play('boing'); }
+        shopDirty = true;
+      };
+      tree.append(n);
+    }
+  }
+  if (tipId) requestAnimationFrame(() => tipId && showTip(tipId)); // la bulle suit le cercle redessiné
+}
+
+// ---------- Appui long sur un cercle (ou souris posée dessus) : la bulle « où j'en suis » ----------
+let tipId = '', tipTimer = 0, tipHide = 0, press = null, pressLong = false, hoverId = '';
+const tipEl = $('treeTip');
+function showTip(id) {
+  const u = UPGRADES.find(x => x.id === id), node = $('tree').querySelector(`.tnode[data-id="${id}"]`);
+  if (!u || !node) { hideTip(true); return; }
+  clearTimeout(tipHide);
+  if (tipId !== id) for (const n of document.querySelectorAll('.tnode.peek')) n.classList.remove('peek');
+  tipId = id;
+  node.classList.add('peek');
+  const hidden = nodeHidden(u), lock = hidden ? '' : upgradeLock(u);
+  const level = lv(u.id), maxed = level >= u.max;
+  tipEl.style.setProperty('--c', nodeColor(u));
+  tipEl.replaceChildren();
+  const add = (cls, txt, tag = 'div') => { const e = document.createElement(tag); e.className = cls; if (txt !== undefined) e.textContent = txt; tipEl.append(e); return e; };
+  const th = add('th');
+  const nm = document.createElement('span'); nm.textContent = hidden ? '???' : u.name;
+  const lvl = document.createElement('b'); lvl.textContent = hidden ? '' : maxed ? 'MAX' : T('niv. {0} / {1}', level, u.max);
+  th.append(nm, lvl);
+  if (hidden) { add('td', T('Une amélioration mystère : elle apparaîtra quand les insectes auront encore muté.')); }
+  else {
+    const bar = add('tb'); const i = document.createElement('i'); i.style.width = Math.round(100 * level / u.max) + '%'; bar.append(i);
+    add('td', lock ? `🔒 ${lock}` : u.desc);
+    // Où j'en suis : la valeur actuelle, et ce que donnera le prochain niveau
+    const tv = add('tv');
+    tv.textContent = T('Maintenant : {0}', u.fmt(S));
+    if (!maxed) {
+      const next = computeStats(x => lv(x) + (x === u.id ? 1 : 0));
+      const nx = document.createElement('div'); nx.className = 'nx'; nx.textContent = T('Niveau suivant : {0}', u.fmt(next)); tv.append(nx);
+    }
+    const nt = !maxed && u.skins ? u.skins.find(([l]) => l > level && l <= u.max) : null;
+    if (nt) add('ts', T('✨ Niv. {0} : {1}', nt[0], nt[1]));
+  }
+  // Placée au-dessus du cercle (en dessous s'il n'y a pas la place), sans sortir de l'écran
+  const view = shopEl.querySelector('.workshopView').getBoundingClientRect(), r = node.getBoundingClientRect();
+  tipEl.classList.add('on');
+  const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+  let left = r.left + r.width / 2 - view.left - w / 2, top = r.top - view.top - h - 22;
+  if (top < 8) {
+    // Pas la place au-dessus : à côté du cercle (du côté le plus libre), sinon en dessous
+    top = r.top + r.height / 2 - view.top - h / 2;
+    const cxv = r.left + r.width / 2 - view.left;
+    if (cxv < view.width / 2 && r.right - view.left + 14 + w < view.width - 8) left = r.right - view.left + 14;
+    else if (r.left - view.left - 14 - w > 8) left = r.left - view.left - 14 - w;
+    else if (r.right - view.left + 14 + w < view.width - 8) left = r.right - view.left + 14;
+    else top = r.bottom - view.top + 22;
+  }
+  left = Math.max(8, Math.min(view.width - w - 8, left));
+  top = Math.max(8, Math.min(view.height - h - 70, top));
+  tipEl.style.left = left + 'px'; tipEl.style.top = top + 'px';
+}
+function hideTip(now = false) {
+  clearTimeout(tipTimer);
+  clearTimeout(tipHide);
+  const go = () => { tipId = ''; tipEl.classList.remove('on'); for (const n of document.querySelectorAll('.tnode.peek')) n.classList.remove('peek'); };
+  if (now) go(); else tipHide = setTimeout(go, 650);
+}
+{
+  const treeEl = $('tree');
+  const nodeAt = e => e.target.closest?.('.tnode');
+  treeEl.addEventListener('pointerdown', e => {
+    const n = nodeAt(e);
+    pressLong = false;
+    if (!n) return;
+    clearTimeout(tipTimer);
+    press = { id: n.dataset.id, x: e.clientX, y: e.clientY, mouse: e.pointerType === 'mouse' };
+    tipTimer = setTimeout(() => {
+      if (!press) return;
+      pressLong = true;
+      showTip(press.id);
+      buzz(10);
+      state.tutos = state.tutos || {};
+      state.tutos = state.tutos || {};
+      if (!state.tutos.bulle) { state.tutos.bulle = true; save(); $('wsHint').replaceChildren(); }
+    }, 380);
+  });
+  treeEl.addEventListener('pointermove', e => {
+    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 12) { // on fait glisser l'arbre : pas d'appui long
+      clearTimeout(tipTimer);
+      press = null;
+      if (e.pointerType !== 'mouse') hideTip(true);
+    }
+    if (e.pointerType === 'mouse' && !press) {
+      const id = nodeAt(e)?.dataset.id || '';
+      if (id === hoverId) return;
+      hoverId = id;
+      clearTimeout(tipTimer);
+      if (!id) hideTip(true);
+      else tipTimer = setTimeout(() => showTip(id), tipId ? 0 : 300);
+    }
+  });
+  treeEl.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') { hoverId = ''; hideTip(true); } });
+  const end = e => {
+    if (!press) return;
+    clearTimeout(tipTimer);
+    const wasMouse = press.mouse;
+    press = null;
+    if (pressLong && !wasMouse) hideTip();
+  };
+  window.addEventListener('pointerup', end);
+  window.addEventListener('pointercancel', end);
 }
 window.addEventListener('resize', () => { if (shopEl.classList.contains('open')) shopDirty = true; });
 
@@ -8596,7 +8900,16 @@ function updateHud() {
   $('workshopMoney').textContent = fmtMoney(state.run.cash);
   $('killsLine').textContent = T(`{0} insecte{1} écrasé{2} · {3} lancer{4}`, fmtInt(run.kills), run.kills > 1 ? 's' : '', run.kills > 1 ? 's' : '', fmtInt(run.launches), run.launches > 1 ? 's' : '');
   $('waveText').textContent = T(`{0} Vague {1}`, isStory() ? '📖' : '🍪', run.wave);
-  if (isStory()) {
+  if (run.daily) {
+    const best = state.daily?.day === run.daily ? state.daily.best : 0;
+    $('waveText').textContent = T('📅 Défi du jour');
+    $('waveSide').textContent = T(`🚀 {0} lancer{1}`, run.launchesLeft, run.launchesLeft > 1 ? 's' : '');
+    $('quotaLabel').textContent = T('🏆 Ton record');
+    $('quotaText').textContent = best ? fmtMoney(best) : '—';
+    $('quotaBar').style.width = `${best ? Math.min(1, run.money / best) * 100 : 0}%`;
+    $('quotaBar').classList.toggle('done', !!best && run.money > best);
+  } else if (isStory()) {
+    $('quotaLabel').textContent = T('🎯 Objectif');
     const quota = waveQuota();
     $('waveSide').textContent = T(`🚀 {0} lancer{1}`, run.launchesLeft, run.launchesLeft > 1 ? 's' : '');
     $('quotaText').textContent = `${Math.min(run.waveKills, quota)} / ${quota}`;
@@ -8618,7 +8931,7 @@ function updateHud() {
   // Boutons d'achat : activés/désactivés selon l'argent, sans tout reconstruire
   let canBuy = false;
   for (const n of document.querySelectorAll('.tnode[data-cost]')) n.classList.toggle('can', state.run.cash >= Number(n.dataset.cost));
-  for (const btn of shopList.querySelectorAll('button[data-cost]')) {
+  for (const btn of shopEl.querySelectorAll('.card button[data-cost]')) {
     if (btn.dataset.cost === '') continue;
     btn.disabled = state.run.cash < Number(btn.dataset.cost);
     btn.parentElement.classList.toggle('can', !btn.disabled);
@@ -8637,7 +8950,11 @@ function updateHud() {
   else if (paused) msg = run.over ? T('Défaite…') : run.choice ? T('Choisis un bonus') : T('Pause');
   else if (charging) msg = T('Relâche dans la zone verte = PARFAIT !');
   else if (nest) msg = nest.launched ? T('🌀 Tes toupies tournent sans fin… surveille la Reine !') : T('Un seul lancer : envoie tes toupies sur la Reine !');
-  else if (isStory()) {
+  else if (run.daily) {
+    if (alive.length) msg = T(`🌀 {0} tr/min`, fmtInt(Math.max(...alive.map(t => t.spin))));
+    else if (run.launchesLeft === 1) msg = T('⚠️ Dernier lancer : fais-le compter !');
+    else msg = T('Prêt ! Encore {0} lancers', run.launchesLeft);
+  } else if (isStory()) {
     const missing = waveQuota() - run.waveKills;
     if (alive.length) msg = T(`🌀 {0} tr/min`, fmtInt(Math.max(...alive.map(t => t.spin)))) + (run.cleared ? T(' · objectif atteint ✅') : T(` · encore {0} à écraser`, missing));
     else if (run.cleared) msg = T('Objectif atteint ✅');
@@ -8830,8 +9147,11 @@ function update(dt) {
   // Histoire : fin de vague une fois les toupies tombées
   // (objectif atteint = vague repoussée ; plus de lancers sans l'objectif = envahi)
   if (isStory() && playing && tops.length === 0 && !nest) {
-    if (run.cleared) { endWave(); return; }
-    if (run.launchesLeft <= 0 && !tryRescue()) { defeat(); return; }
+    if (run.daily) { if (run.launchesLeft <= 0) { dailyEnd(); return; } }
+    else {
+      if (run.cleared) { endWave(); return; }
+      if (run.launchesLeft <= 0 && !tryRescue()) { defeat(); return; }
+    }
   }
 
   // Charge du lanceur (en temps réel, même en vitesse ×2, pour garder la même difficulté de visée)

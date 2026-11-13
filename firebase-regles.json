@@ -44,6 +44,30 @@
             ".validate": false
           }
         }
+      },
+      "jour": {
+        ".read": true,
+        "$day": {
+          ".indexOn": [
+            "score"
+          ],
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && $day.matches(/^20[0-9][0-9]-[01][0-9]-[0-3][0-9]$/)",
+            ".validate": "newData.hasChildren(['pseudo', 'score', 't']) && (!data.exists() || newData.child('score').val() >= data.child('score').val())",
+            "pseudo": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+            },
+            "score": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000"
+            },
+            "t": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
       }
     },
     "stats": {
