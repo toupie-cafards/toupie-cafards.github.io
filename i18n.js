@@ -945,4 +945,13 @@ export const I18N = {
 "🏆 Entre dans le classement mondial : choisis ton pseudo !": ["🏆 Join the world leaderboard: pick your nickname!", "🏆 Entra en la clasificación mundial: ¡elige tu apodo!", "🏆 Ab in die Weltrangliste: Wähle deinen Spielernamen!"],
 "Pas d’e-mail, pas de mot de passe.": ["No email, no password.", "Sin correo ni contraseña.", "Keine E-Mail, kein Passwort."],
 "✅ C’est noté, {0} ! Ton score part au classement.": ["✅ Got it, {0}! Your score is on its way to the leaderboard.", "✅ ¡Anotado, {0}! Tu puntuación va a la clasificación.", "✅ Notiert, {0}! Deine Punktzahl geht in die Rangliste."],
+"▶ Continuer": ["▶ Continue", "▶ Continuar", "▶ Weiter"],
+"Carton": ["Toy box", "Caja", "Kiste"],
+"Succès": ["Trophies", "Logros", "Erfolge"],
+"Classement": ["Ranking", "Ranking", "Rangliste"],
+"Partager": ["Share", "Compartir", "Teilen"],
+"Sauvegarde": ["Save", "Guardar", "Speichern"],
+"Réglages": ["Settings", "Ajustes", "Optionen"],
+"Café": ["Coffee", "Café", "Kaffee"],
+"Ce jeu est gratuit, sans pub et sans compte. Si tu as passé un bon moment, un café fait très plaisir.": ["This game is free, with no ads and no account. If you had a good time, a coffee is always appreciated.", "Este juego es gratis, sin anuncios ni cuenta. Si lo has pasado bien, un café se agradece mucho.", "Dieses Spiel ist kostenlos, ohne Werbung und ohne Konto. Wenn es dir Spaß gemacht hat, freue ich mich sehr über einen Kaffee."],
 };

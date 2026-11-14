@@ -531,6 +531,55 @@
   .langRow { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 12px; }
   .langRow button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px; cursor: pointer; border: 1px solid rgba(255,255,255,.18); background: rgba(36, 27, 20, .95); color: var(--muted); }
   .langRow button.on { border-color: var(--gold); color: var(--gold); font-weight: 800; }
+  /* Menu d'accueil : un gros bouton JOUER, le défi du jour, puis le reste en petites icônes */
+  .mCol { display: contents; }
+  .playBtn { display: flex; flex-direction: column; align-items: center; width: 100%; margin: 0 0 12px; padding: 14px 16px 12px; border: 0; border-radius: 18px; cursor: pointer;
+    font: inherit; color: #3a1d00; background: linear-gradient(180deg, #ffe27a, #ffb52e 60%, #f08a12);
+    box-shadow: 0 6px 0 #9a4f00, 0 10px 24px rgba(255,160,40,.35), inset 0 2px 0 rgba(255,255,255,.6); transition: transform .08s, box-shadow .08s; }
+  .playBtn:hover, .playBtn:focus-visible { outline: none; transform: translateY(-2px); box-shadow: 0 8px 0 #9a4f00, 0 14px 30px rgba(255,160,40,.5), inset 0 2px 0 rgba(255,255,255,.6); }
+  .playBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #9a4f00, 0 4px 12px rgba(255,160,40,.3), inset 0 2px 0 rgba(255,255,255,.6); }
+  .playBtn .pb-t { font-size: clamp(30px, 8vw, 40px); font-weight: 900; letter-spacing: .04em; text-transform: uppercase; line-height: 1.05; text-shadow: 0 2px 0 rgba(255,255,255,.45); }
+  .playBtn .pb-t .ic { width: .8em; height: .8em; vertical-align: -0.06em; }
+  .playBtn .pb-r { font-size: 13px; font-weight: 800; margin-top: 4px; color: #6a3500; }
+  .playBtn .pb-r:empty { display: none; }
+  #dailyBtn { padding: 11px 14px; margin-bottom: 12px; }
+  #dailyBtn .mt { font-size: 17px; }
+  #dailyBtn .md { font-size: 12px; margin-top: 2px; }
+  #dailyBtn .dailyTw { margin-top: 5px; font-size: 12px; }
+  #menu .menuBox { width: min(560px, 100%); }
+  /* Une seule rangée sur grand écran ; 4 par rangée (centrées) sur téléphone */
+  .menuIcons { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0 0 6px; }
+  .menuIcons > .mIco { flex: 1 1 0; min-width: 62px; }
+  @media (max-width: 520px) { .menuIcons > .mIco { flex: 0 0 calc((100% - 24px) / 4); min-width: 0; } }
+  .mIco { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 68px; padding: 8px 4px 7px;
+    border-radius: 14px; border: 1px solid rgba(255,255,255,.14); background: rgba(36, 27, 20, .95); color: var(--text); font: inherit; cursor: pointer;
+    text-decoration: none; transition: transform .1s, border-color .1s; }
+  .mIco:hover, .mIco:focus-visible { border-color: var(--gold); transform: translateY(-2px); outline: none; }
+  .mIco .mi-i { font-size: 26px; line-height: 1; }
+  .mIco .mi-l { font-size: 10.5px; font-weight: 800; color: var(--muted); line-height: 1.15; letter-spacing: -0.01em; }
+  .mIco .mi-b { position: absolute; top: -6px; right: -4px; min-width: 20px; padding: 2px 6px; border-radius: 999px; font-size: 11px; font-weight: 900;
+    background: #3a2c20; color: var(--text); border: 1px solid rgba(255,255,255,.2); }
+  .mIco .mi-b:empty { display: none; }
+  .mIco .mi-b.hot { background: var(--gold); color: #3a1d00; border-color: #fff3c0; }
+  .mIco .mi-b .ic { width: 1.1em; height: 1.1em; vertical-align: -0.22em; }
+  .mIco[aria-expanded="true"] { border-color: var(--gold); }
+  .mIco.coffeeBtn .mi-l { color: #ffc46a; }
+  .menuSettings { margin: 6px 0 4px; padding: 12px 10px 8px; border-radius: 14px; background: rgba(0,0,0,.25); border: 1px solid rgba(255,255,255,.1); }
+  .menuSettings[hidden] { display: none; }
+  .menuSettings .pseudoRow { margin: 0 0 10px; }
+  .menuSettings .settingsRow { margin: 0 0 6px; }
+  #menu .menuNote { font-size: 11.5px; margin-top: 8px; }
+  @media (max-height: 640px) { #menu .tag { margin: 4px 0 10px; font-size: 14px; } }
+  /* Téléphone à l'horizontale : deux colonnes (titre + JOUER à gauche, le reste à droite) */
+  @media (max-height: 520px) and (min-aspect-ratio: 4/3) {
+    #menu .menuBox { width: min(880px, 100%); display: grid; grid-template-columns: 1fr 1.1fr; gap: 0 22px; align-items: center; }
+    #menu .mCol { display: block; }
+    #menu h1 { font-size: clamp(26px, 6vh, 38px); }
+    .playBtn { margin-bottom: 0; }
+    .menuIcons > .mIco { flex: 0 0 calc((100% - 24px) / 4); min-width: 0; }
+    .mIco { min-height: 58px; }
+    .mIco .mi-i { font-size: 22px; }
+  }
 
   /* Dialogue de l'histoire */
   #dialog { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(620px, calc(100vw - 24px)); z-index: 15;
@@ -747,52 +796,39 @@
 
 <div id="menu">
   <div class="menuBox">
-    <h1>🌀 Toupie<br>contre Cafards</h1>
-    <p class="tag">Mon bureau est envahi. Il est temps de ressortir les vieux jouets.</p>
-    <div class="pseudoRow"><label for="pseudoInput">👤 Pseudo</label><input id="pseudoInput" maxlength="16" placeholder="Ton pseudo" autocomplete="off"></div>
-    <div class="langRow" id="langRow"><button data-lang="fr">Français</button><button data-lang="en">English</button><button data-lang="es">Español</button><button data-lang="de">Deutsch</button></div>
-    <div class="defiNote" id="defiNote" hidden></div>
-    <button class="modeBtn story" id="storyBtn">
-      <div class="mt">📖 Mode Histoire</div>
-      <div class="md">Repousse l’invasion vague après vague : à chaque vague, un nombre de cafards à écraser avec un nombre de lancers limité. Sinon, ils envahissent tout.</div>
-      <div class="mr" id="storyRecord"></div>
-    </button>
-    <button class="modeBtn dailyBtn" id="dailyBtn">
-      <div class="mt" id="dailyTitle">📅 Défi du jour</div>
-      <div class="md" id="dailyDesc"></div>
-      <div class="mr" id="dailyRecord"></div>
-    </button>
-    <button class="modeBtn toyBtn" id="toyboxBtn">
-      <div class="mt">📦 Le Carton à Jouets</div>
-      <div class="md">Dépense les vagues que tu as repoussées pour être plus fort à chaque nouvelle partie.</div>
-      <div class="mr" id="toyboxBalance"></div>
-    </button>
-    <button class="modeBtn achBtn" id="achBtn">
-      <div class="mt">🏅 Succès</div>
-      <div class="md">Des défis à relever : chacun rapporte des 🌊 pour le Carton à Jouets.</div>
-      <div class="mr" id="achCount"></div>
-    </button>
-    <button class="modeBtn lbBtn" id="lbBtn">
-      <div class="mt">🏆 Classement</div>
-      <div class="md">Les meilleurs joueurs du mode Histoire : ta meilleure vague est envoyée avec ton pseudo.</div>
-    </button>
-    <button class="modeBtn" id="shareGameBtn">
-      <div class="mt">📣 Envoie le jeu à un ami</div>
-      <div class="md">Ton ami reçoit un lien qui lui lance ton record en défi. Ton premier partage rapporte 3 🌊 pour le Carton à Jouets.</div>
-    </button>
-    <button class="modeBtn" id="saveBtn">
-      <div class="mt">💾 Sauvegarde</div>
-      <div class="md">Copie ton code de sauvegarde pour retrouver ta progression sur un autre téléphone.</div>
-    </button>
-    <a class="modeBtn coffeeBtn" id="coffeeBtn" href="#" target="_blank" rel="noopener noreferrer">
-      <div class="mt">☕ Offre-moi un café</div>
-      <div class="md">Ce jeu est gratuit, sans pub et sans compte. Derrière, il n’y a pas un studio : juste <span class="coffeeWho">une personne</span> qui le fabrique le soir. Si tu as passé un bon moment, un café fait très plaisir. Et si tu ne donnes rien, tout reste exactement pareil dans le jeu.</div>
-    </a>
-    <button class="linkBtn" id="replayIntro">Revoir l’introduction</button>
-    <div class="menuNote">En cas de défaite, tout repart de zéro : argent, améliorations et infestation.</div>
-    <div class="menuNote" id="versionNote"></div>
-    <div class="menuNote madeBy">Fabriqué à la main, un soir après l’autre, par <span class="coffeeWho">une seule personne</span>. 🌀</div>
-    <div class="menuNote" id="privacyNote"><a href="https://toupie-cafards.github.io/confidentialite.html" target="_blank" rel="noopener" style="color:#7fd1ff">Confidentialité</a></div>
+    <div class="mCol mColA">
+      <h1>🌀 Toupie<br>contre Cafards</h1>
+      <p class="tag">Mon bureau est envahi. Il est temps de ressortir les vieux jouets.</p>
+      <div class="defiNote" id="defiNote" hidden></div>
+      <button class="playBtn" id="storyBtn">
+        <span class="pb-t" id="playLabel">▶ Jouer</span>
+        <span class="pb-r" id="storyRecord"></span>
+      </button>
+    </div>
+    <div class="mCol mColB">
+      <button class="modeBtn dailyBtn" id="dailyBtn">
+        <div class="mt" id="dailyTitle">📅 Défi du jour</div>
+        <div class="md" id="dailyDesc"></div>
+        <div class="mr" id="dailyRecord"></div>
+      </button>
+      <div class="menuIcons">
+        <button class="mIco" id="toyboxBtn" title="Dépense les vagues que tu as repoussées pour être plus fort à chaque nouvelle partie."><span class="mi-i">📦</span><span class="mi-l">Carton</span><span class="mi-b" id="toyboxBalance"></span></button>
+        <button class="mIco" id="achBtn" title="Des défis à relever : chacun rapporte des 🌊 pour le Carton à Jouets."><span class="mi-i">🏅</span><span class="mi-l">Succès</span><span class="mi-b" id="achCount"></span></button>
+        <button class="mIco" id="lbBtn" title="Les meilleurs joueurs du mode Histoire : ta meilleure vague est envoyée avec ton pseudo."><span class="mi-i">🏆</span><span class="mi-l">Classement</span></button>
+        <button class="mIco" id="shareGameBtn" title="Ton ami reçoit un lien qui lui lance ton record en défi. Ton premier partage rapporte 3 🌊 pour le Carton à Jouets."><span class="mi-i">📣</span><span class="mi-l mt">Partager</span></button>
+        <button class="mIco" id="saveBtn" title="Copie ton code de sauvegarde pour retrouver ta progression sur un autre téléphone."><span class="mi-i">💾</span><span class="mi-l">Sauvegarde</span></button>
+        <button class="mIco" id="settingsBtn" aria-expanded="false"><span class="mi-i">⚙️</span><span class="mi-l">Réglages</span></button>
+        <a class="mIco coffeeBtn" id="coffeeBtn" href="#" target="_blank" rel="noopener noreferrer" title="Ce jeu est gratuit, sans pub et sans compte. Si tu as passé un bon moment, un café fait très plaisir."><span class="mi-i">☕</span><span class="mi-l">Café</span></a>
+      </div>
+      <div class="menuSettings" id="menuSettings" hidden>
+        <div class="pseudoRow"><label for="pseudoInput">👤 Pseudo</label><input id="pseudoInput" maxlength="16" placeholder="Ton pseudo" autocomplete="off"></div>
+        <div class="langRow" id="langRow"><button data-lang="fr">Français</button><button data-lang="en">English</button><button data-lang="es">Español</button><button data-lang="de">Deutsch</button></div>
+        <div class="settingsRow"><button class="linkBtn" id="mSoundBtn"></button><button class="linkBtn" id="mMusicBtn"></button></div>
+        <button class="linkBtn" id="replayIntro">Revoir l’introduction</button>
+      </div>
+      <div class="menuNote">En cas de défaite, tout repart de zéro : argent, améliorations et infestation.</div>
+      <div class="menuNote"><span id="versionNote"></span> · <span class="madeBy">Fabriqué à la main, un soir après l’autre, par <span class="coffeeWho">une seule personne</span>. 🌀</span> <span id="privacyNote">· <a href="https://toupie-cafards.github.io/confidentialite.html" target="_blank" rel="noopener" style="color:#7fd1ff">Confidentialité</a></span></div>
+    </div>
   </div>
 </div>
 
@@ -1000,6 +1036,8 @@ const ICO_MEDAL = (col) => '<path d="M8 2h6l3 10h-6zM24 2h-6l-3 10h6z" fill="#e2
 const ICO_TOP = (dx, dy, s) => '<g transform="translate(' + dx + ' ' + dy + ') scale(' + s + ')"><path d="M14 2h4v6h-4z" fill="#f5c542"/>' +
   '<path d="M5 13c0-3 5-5 11-5s11 2 11 5c0 5-7 11-11 17C12 24 5 18 5 13z" fill="#e2483d"/><path d="M5.5 14.5c4 3 17 3 21 0"/></g>';
 const ICONS = {
+  megaphone: '<path d="M4 13h4v6H4z" fill="#ece7df"/><path d="M8 13l13-6.5v19L8 19z" fill="#e0533d"/><path d="M9 19.5l2 7h3.5l-1.6-6.3" fill="#8b5a33"/><path d="M24.5 12.5c1.6 1.6 1.6 5.4 0 7M27.5 9.5c3.2 3.4 3.2 9.6 0 13" stroke-width="1.7"/>',
+  tasse: '<path d="M5 28h20"/><path d="M6 13h16v6.5a7.5 7.5 0 0 1-7.5 7.5h-1A7.5 7.5 0 0 1 6 19.5z" fill="#f6e3c0"/><path d="M7 14.2h14v2.4H7z" fill="#8b5a33" stroke="none"/><path d="M22 15.5h1.8a3 3 0 0 1 0 6H22"/><path d="M11.5 10c-1.6-1.6 1.6-3.2 0-5.5M16.5 10c-1.6-1.6 1.6-3.2 0-5.5" stroke-width="1.6"/>',
   de: '<rect x="5.5" y="5.5" width="21" height="21" rx="4.5" fill="#fff3e0"/><circle cx="11" cy="11" r="2" fill="#3b2414" stroke="none"/><circle cx="16" cy="16" r="2" fill="#3b2414" stroke="none"/><circle cx="21" cy="21" r="2" fill="#3b2414" stroke="none"/><circle cx="21" cy="11" r="2" fill="#3b2414" stroke="none"/><circle cx="11" cy="21" r="2" fill="#3b2414" stroke="none"/>',
   vague: '<path d="M3 27v-7c3-8 11-13 18-9-4 1-6 4-4 7 2-3 7-3 11 1v8z" fill="#4aa3e0"/><path d="M12.5 14.5c2-2 5-3 8-3.2" stroke="#fff"/><path d="M8 23c3-1 6-1 9 0" stroke="#bfe3ff"/>',
   piece: '<circle cx="16" cy="16" r="12.5" fill="#f5c542"/><circle cx="16" cy="16" r="8.5" stroke="#c98f1c"/><path d="M18.5 12.5c-1-1.2-5-1.5-5 .8 0 2.6 5 1.6 5 4.4 0 2.4-4 2.2-5.2.8M16 10v12" stroke="#a5700f"/>',
@@ -1144,7 +1182,7 @@ const EMOJI_ICON = {
   '〰': 'vague', '😨': 'visage-peur', '😱': 'visage-peur', '😳': 'visage-peur', '😮': 'visage-peur', '😩': 'visage-fatigue',
   '😵': 'visage-fatigue', '😤': 'visage-colere', '😠': 'visage-colere', '😡': 'visage-colere', '🤔': 'visage-reflexion',
   '😏': 'visage-malin', '😌': 'visage-soulage', '💪': 'visage-determine', '⏱': 'montre',
-  '📅': 'calendrier', '🎁': 'cadeau', '🐘': 'pierre', '🤸': 'trampo', '🧲': 'griffe', '🔗': 'etincelles',
+  '📅': 'calendrier', '🎁': 'cadeau', '📣': 'megaphone', '📢': 'megaphone', '☕': 'tasse', '🐘': 'pierre', '🤸': 'trampo', '🧲': 'griffe', '🔗': 'etincelles',
 };
 // L'illustration de chaque amélioration de l'atelier
 const UPGRADE_ICON = { endurance: 'u-endurance', diametre: 'u-diametre', poids: 'u-poids', pointe: 'u-pointe', lames: 'u-lames', inertie: 'u-inertie',
@@ -5452,7 +5490,7 @@ function renderAchievements() {
 function updateAchCount() {
   const done = ACHIEVEMENTS.filter(a => state.achievements?.[a.id]).length;
   const el = document.getElementById('achCount');
-  if (el) el.textContent = T(`{0} / {1} succès`, done, ACHIEVEMENTS.length);
+  if (el) { el.textContent = done + '/' + ACHIEVEMENTS.length; el.parentElement.title = T(`{0} / {1} succès`, done, ACHIEVEMENTS.length); }
 }
 
 function banner(title, sub) {
@@ -7012,7 +7050,14 @@ function openMenu() {
   paused = true;
   charging = false;
   modal.classList.remove('open');
-  document.getElementById('storyRecord').textContent = runLabel('histoire');
+  {
+    const run = state.savedRuns.histoire, best = state.best.histoire || 1;
+    const going = (run.wave > 1 || run.kills > 0) && !run.over;
+    document.getElementById('playLabel').textContent = going ? T('▶ Continuer') : T('▶ Jouer');
+    document.getElementById('storyRecord').textContent = going ? T('Vague {0}', run.wave) + ' · ' + T('Record : vague {0}', best)
+      : best > 1 ? T('Record : vague {0}', best) : '';
+  }
+  updateMenuSettings();
   renderDefi();
   renderDailyBtn();
   document.getElementById('replayIntro').style.display = state.introSeen ? '' : 'none';
@@ -7160,7 +7205,10 @@ function renderToybox() {
 function openMenuRefresh() {
   updateAchCount();
   const runWaves = ['histoire', 'carnage'].reduce((a, m) => a + (state.savedRuns[m].metaGain ?? state.savedRuns[m].wavesCleared), 0);
-  document.getElementById('toyboxBalance').textContent = T(`🌊 {0} à dépenser`, metaBalance()) + (runWaves ? T(` · dont {0} gagnée{1} dans tes parties en cours`, runWaves, runWaves > 1 ? 's' : '') : '');
+  const tb = document.getElementById('toyboxBalance'), bal = metaBalance();
+  tb.textContent = bal > 0 ? '🌊 ' + bal : '';
+  tb.classList.toggle('hot', bal > 0);
+  document.getElementById('toyboxBtn').title = T(`🌊 {0} à dépenser`, bal) + (runWaves ? T(` · dont {0} gagnée{1} dans tes parties en cours`, runWaves, runWaves > 1 ? 's' : '') : '');
   shopDirty = true;
 }
 document.getElementById('toyboxBtn').onclick = openToybox;
@@ -7212,7 +7260,7 @@ const SUPPORT_NAME = T('Louis'); // ← ex. 'Louis' ; vide = formulation neutre 
   const btns = [document.getElementById('coffeeBtn'), document.getElementById('crCoffee')].filter(Boolean);
   if (SUPPORT_NAME) document.querySelectorAll('.coffeeWho').forEach(el => { el.textContent = SUPPORT_NAME; });
   if (!SUPPORT_URL || ON_CG) { btns.forEach(b => { b.style.display = 'none'; }); return; }
-  btns.forEach(b => { b.href = SUPPORT_URL; b.style.display = b.id === 'coffeeBtn' ? 'block' : 'inline-block'; });
+  btns.forEach(b => { b.href = SUPPORT_URL; b.style.display = b.id === 'coffeeBtn' ? 'flex' : 'inline-block'; });
 })();
 
 // Partage : « Défie un ami ». Le lien porte le défi (?defi=vague ou ?chrono=secondes, &de=pseudo) :
@@ -7842,11 +7890,27 @@ document.getElementById('loadSave').onclick = () => {
   try { importSave(code); } catch (e) { loadArmed = false; msg.textContent = '❌ ' + e.message; }
 };
 document.getElementById('saveClose').onclick = () => document.getElementById('savePanel').classList.remove('open');
+function updateMenuSettings() {
+  const sb = document.getElementById('mSoundBtn'), mb = document.getElementById('mMusicBtn');
+  if (!sb) return;
+  sb.textContent = state.settings.sound !== false ? T('🔊 Son : activé') : T('🔇 Son : coupé');
+  mb.textContent = state.settings.music !== false ? T('🎵 Musique : activée') : T('🎵 Musique : coupée');
+}
+document.getElementById('settingsBtn').onclick = () => {
+  const p = document.getElementById('menuSettings'), b = document.getElementById('settingsBtn');
+  p.hidden = !p.hidden;
+  b.setAttribute('aria-expanded', String(!p.hidden));
+  updateMenuSettings();
+  SFX.init(); SFX.play('pick');
+};
+document.getElementById('mSoundBtn').onclick = () => document.getElementById('soundBtn').click();
+document.getElementById('mMusicBtn').onclick = () => document.getElementById('musicBtn').click();
 document.getElementById('achBtn').onclick = () => { renderAchievements(); document.getElementById('achPanel').classList.add('open'); };
 document.getElementById('achClose').onclick = () => { document.getElementById('achPanel').classList.remove('open'); updateAchCount(); openMenuRefresh(); };
 function updateSettingsBtns() {
   document.getElementById('soundBtn').textContent = state.settings.sound !== false ? T('🔊 Son : activé') : T('🔇 Son : coupé');
   document.getElementById('musicBtn').textContent = state.settings.music !== false ? T('🎵 Musique : activée') : T('🎵 Musique : coupée');
+  updateMenuSettings();
   document.getElementById('vibBtn').textContent = state.settings.vibrate !== false ? T('📳 Vibrations : activées') : T('📴 Vibrations : coupées');
 }
 document.getElementById('soundBtn').onclick = () => { state.settings.sound = state.settings.sound === false; updateSettingsBtns(); SFX.init(); SFX.play('buy'); save(); };
@@ -7952,7 +8016,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-14.2';
+const VERSION = '2026-11-14.3';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
