@@ -8016,7 +8016,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-14.3';
+const VERSION = '2026-11-18.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -9626,6 +9626,27 @@ if (TEST_MODE === 'nid' || TEST_MODE === 'boss') {
   refreshStats();
   run.launchesLeft = waveLaunches();
   document.querySelector('#menu .tag').textContent = T('🧪 Session de test : fin de partie, 1,2 milliard en poche. Ta vraie sauvegarde n’est pas touchée.');
+}
+// Session de test « vague 50, tout au max » (?test=max) : toutes les améliorations, cartes et objets du Carton au maximum
+if (TEST_MODE === 'max') {
+  const run = state.savedRuns.histoire = newRun('histoire');
+  state.mode = 'histoire';
+  state.run = run;
+  state.introSeen = true;
+  state.tutos = new Proxy({}, { get: () => true });
+  state.meta.items = Object.fromEntries(TOYBOX.map(t => [t.id, t.max]));
+  for (const u of UPGRADES) if (!u.modes || u.modes.includes('histoire')) run.levels[u.id] = u.max;
+  run.perks = Object.fromEntries(PERKS.filter(p => !p.modes || p.modes.includes('histoire')).map(p => [p.id, p.max]));
+  const spider = BUG_TYPES.findIndex(t => t.stage === 2);
+  run.infest = INFEST_THRESHOLDS[spider + 2] + 100;
+  run.stageSeen = 2;
+  run.wave = 50;
+  run.cash = 1e12;
+  run.toyboxApplied = true;
+  refreshStats();
+  updateLauncherSkin();
+  run.launchesLeft = waveLaunches();
+  document.querySelector('#menu .tag').textContent = T('🧪 Session de test : vague 50, toutes les améliorations au maximum. Ta vraie sauvegarde n’est pas touchée.');
 }
 if (!(state.pseudo || '').trim() && !TEST_MODE) openNameGate(); else openMenu();
 requestAnimationFrame(frame);
