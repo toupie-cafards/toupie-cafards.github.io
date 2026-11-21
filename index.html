@@ -7129,14 +7129,24 @@ function startIntro() {
 function showIntroLine() {
   const l = dialogLines[introStep];
   clearTimeout(introTimer);
-  if (dialogLines === INTRO) introTimer = setTimeout(nextIntroLine, Math.max(2600, l.text.length * 55));
+  if (dialogLines === INTRO) introTimer = setTimeout(nextIntroLine, Math.max(2200, l.text.length * 42));
   dialogFace.textContent = l.face;
   dialogLine.textContent = l.text;
+  placeDialog();
   if (l.showTop && !introTop) {
     introTop = { ...makeTopMesh(), t: 0 };
     introTop.tilt.scale.setScalar(S.radius * 1.6);
   }
 }
+function placeDialog() {
+  dialogEl.style.bottom = '';
+  if (dialogLines !== INTRO) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  tmpV.set(LAUNCH.x, 0.03, LAUNCH.y).project(camera);
+  const ly = rect.top + (-tmpV.y * 0.5 + 0.5) * rect.height;
+  dialogEl.style.bottom = Math.max(16, Math.round(innerHeight - ly + 70)) + 'px';
+}
+addEventListener('resize', () => { if (introStep >= 0) placeDialog(); });
 function nextIntroLine() {
   if (introStep < 0) return;
   introStep++;
@@ -7147,6 +7157,7 @@ function endIntro() {
   clearTimeout(introTimer);
   introStep = -1;
   dialogEl.classList.remove('open');
+  dialogEl.style.bottom = '';
   skipBtn.classList.remove('open');
   if (dialogDone) { const done = dialogDone; dialogDone = null; done(); return; }
   if (introTop) { disposeTop(introTop); introTop = null; }
@@ -8016,7 +8027,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-18.1';
+const VERSION = '2026-11-21.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -8115,6 +8126,8 @@ canvas.addEventListener('pointerdown', e => {
   lastInput = gameTime;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   try { canvas.setPointerCapture(e.pointerId); } catch { /* capture impossible : sans gravité */ }
+  // Pendant l'intro : toucher le lanceur la passe et arme tout de suite ; toucher ailleurs fait avancer les bulles
+  if (introStep >= 0 && dialogLines === INTRO && !paused && onLauncher(e)) endIntro();
   if (introStep >= 0) { nextIntroLine(); return; }
   if (charging) return; // un deuxième doigt pendant la visée ne change rien
   if (pointers.size === 2) {
@@ -8180,11 +8193,12 @@ function release() {
   if (!charging) return;
   charging = false;
   if (!isReady()) return;
-  const g = gaugeValue();
-  // Tutoriel : le premier lancer ne part que si on a visé et lâché la barre (presque) pleine — sinon on réessaie, sans perdre de lancer
-  if (launchTuto && !launchTuto.done && !nest) {
-    if (launchTuto.moved < 28) { tutoFail('aim'); return; }
-    if (g < 0.85) { tutoFail('power', g); return; }
+  let g = gaugeValue();
+  // Tutoriel : le tout premier lancer part TOUJOURS (avant, un lâcher hors du vert ne lançait rien et des nouveaux joueurs restaient bloqués).
+  // S'il était trop faible, on l'aide un peu et on glisse l'astuce de la zone verte.
+  if (launchTuto && !launchTuto.done && !nest && g < 0.85) {
+    g = Math.max(g, 0.8);
+    setTimeout(() => popup(T('Astuce : lâche dans le vert !'), LAUNCH.x, LAUNCH.y - 0.12, 'big'), 900);
   }
   const perfect = g >= 1 - S.perfect;
   if (perfect) { popup(T('PARFAIT !'), LAUNCH.x, LAUNCH.y - 0.08, 'big'); SFX.play('perfect'); }
@@ -9648,7 +9662,13 @@ if (TEST_MODE === 'max') {
   run.launchesLeft = waveLaunches();
   document.querySelector('#menu .tag').textContent = T('🧪 Session de test : vague 50, toutes les améliorations au maximum. Ta vraie sauvegarde n’est pas touchée.');
 }
-if (!(state.pseudo || '').trim() && !TEST_MODE) openNameGate(); else openMenu();
+// Joueur tout neuf : directement sur le bureau, l'intro démarre seule (5 nouveaux joueurs sur 8 s'arrêtaient à l'écran titre).
+// La langue vient du téléphone ; on peut la changer dans les Réglages du menu.
+const freshPlayer = !TEST_MODE && !state.introSeen && !(state.launches > 0);
+if (freshPlayer) {
+  enterMode('histoire');
+  if (defi && !defi.done) { const d = document.createElement('div'); d.textContent = defiLabel(); showToast(d.innerHTML); }
+} else openMenu();
 requestAnimationFrame(frame);
 
 // Accès pour les tests (lecture des stats et avance du temps)

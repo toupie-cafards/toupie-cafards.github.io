@@ -683,6 +683,7 @@ export const I18N = {
 "Respire… Concentre-toi.": ["Breathe… Focus.", "Respira… Concéntrate.", "Atme… Konzentrier dich."],
 "BRAVO !": ["WELL DONE!", "¡BRAVO!", "BRAVO!"],
 "Glisse le doigt <b>avant</b> de lâcher !": ["Swipe your finger <b>before</b> letting go!", "¡Desliza el dedo <b>antes</b> de soltar!", "Wische mit dem Finger, <b>bevor</b> du loslässt!"],
+"Astuce : lâche dans le vert !": ["Tip: let go in the green!", "Consejo: ¡suelta en el verde!", "Tipp: im Grünen loslassen!"],
 "Raté ! Lâche quand la barre est <b>dans le vert</b>": ["Missed! Let go when the bar is <b>in the green</b>", "¡Fallo! Suelta cuando la barra esté <b>en el verde</b>", "Daneben! Lass los, wenn der Balken <b>im Grünen</b> ist"],
 "Appuie sur le lanceur<br><b>et reste appuyé</b>": ["Press the launcher<br><b>and hold</b>", "Pulsa el lanzador<br><b>y mantén pulsado</b>", "Drück auf den Werfer<br><b>und halte gedrückt</b>"],
 "<b>Glisse</b> pour viser": ["<b>Swipe</b> to aim", "<b>Desliza</b> para apuntar", "<b>Wische</b> zum Zielen"],
