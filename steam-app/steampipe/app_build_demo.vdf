@@ -1,0 +1,20 @@
+"AppBuild"
+{
+	"AppID" "DEMO_APPID"
+	"Desc" "Demo"
+	"BuildOutput" "C:\Users\louis\Documents\Itch-Toupie\steam\steampipe-output\"
+	"ContentRoot" "C:\Users\louis\Documents\Itch-Toupie\steam\builds\Toupie contre Cafards Demo-win32-x64\"
+	"SetLive" ""
+	"Depots"
+	{
+		"DEMO_DEPOTID"
+		{
+			"FileMapping"
+			{
+				"LocalPath" "*"
+				"DepotPath" "."
+				"recursive" "1"
+			}
+		}
+	}
+}

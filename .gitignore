@@ -11,3 +11,5 @@ ios/App/build/
 *.p12
 crazygames/
 crazygames.zip
+steam-app/node_modules/
+steam-app/jeu/

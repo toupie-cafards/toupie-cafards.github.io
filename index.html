@@ -342,6 +342,13 @@
   .summary { text-align: left; margin: 10px 0 16px; }
   .bigBtn { border: 0; border-radius: 12px; padding: 12px 22px; background: var(--gold); color: #1a1410; font-weight: 800; font-size: 16px; cursor: pointer; }
   .defeat { border-color: var(--red); }
+  .demoEnd { border-color: var(--gold); max-width: 520px; }
+  .demoEnd h2 { color: var(--gold); }
+  .demoEnd .demoFull { font-weight: 800; margin: 12px 0 4px; }
+  .demoList { text-align: left; margin: 0 auto 6px; padding-left: 22px; max-width: 380px; line-height: 1.6; }
+  .demoBtns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+  .demoBtns a.bigBtn { text-decoration: none; display: inline-block; }
+  .card.demoLock { opacity: .55; }
   .defeat h2 { color: var(--red); }
 
   /* Menu d'accueil */
@@ -936,6 +943,12 @@ import { I18N } from './i18n.js';
 //  Partout ailleurs, STORE = localStorage, comme avant.
 // =====================================================================
 const ON_CG = window.PLATFORM === 'crazygames';
+// Steam (application Windows, scripts/build-steam.js) : pas de liens vers d'autres sites ni de dons (règles de Valve), pas de mise à jour par le web.
+// Démo : le jeu s'arrête à la première mutation des insectes (window.DEMO, ou ?demo=1 pour tester dans le navigateur).
+const ON_STEAM = window.PLATFORM === 'steam';
+const DEMO = window.DEMO === true || /[?&]demo=1\b/.test(location.search);
+const NO_LINKS = ON_CG || ON_STEAM;
+const STEAM_URL = window.STEAM_URL || 'https://store.steampowered.com/search/?term=Spinning%20Top%20vs%20Roaches';
 let cgReady = false, cgPlaying = false;
 // CrazyGames veut savoir quand le joueur joue vraiment (pas dans un menu ni en pause)
 function cgGameplay(on) {
@@ -1612,7 +1625,7 @@ const state = {
   speedX2: false,
   run: null,
 };
-const PERSISTED = ['totalMoney', 'kills', 'launches', 'bestCombo', 'killsByType', 'mode', 'introSeen', 'tutos', 'best', 'games', 'savedRuns', 'meta', 'speedX2', 'achievements', 'settings', 'maxStage', 'perfectBest', 'bestRunMoney', 'goldenKills', 'pseudo', 'lb', 'nestWins', 'autoOn', 'shareRewarded', 'daily'];
+const PERSISTED = ['totalMoney', 'kills', 'launches', 'bestCombo', 'killsByType', 'mode', 'introSeen', 'tutos', 'best', 'games', 'savedRuns', 'meta', 'speedX2', 'achievements', 'settings', 'maxStage', 'perfectBest', 'bestRunMoney', 'goldenKills', 'pseudo', 'lb', 'nestWins', 'autoOn', 'shareRewarded', 'daily', 'demoDone'];
 function load() {
   try {
     const data = JSON.parse(STORE.getItem(SAVE_KEY));
@@ -5535,6 +5548,7 @@ function mutate() {
   pendingMutation = false;
   const run = state.run, k = stageIndex();
   if (k <= (run.stageSeen || 0)) return;
+  if (DEMO) { demoEnd(); return; }
   run.stageSeen = k;
   state.maxStage = Math.max(state.maxStage || 0, k);
   SFX.play('mutation');
@@ -5551,6 +5565,43 @@ function mutate() {
     previewDirty = true;
   });
   save();
+}
+
+// Démo : les cafards mutent… et la suite est dans le jeu complet. On garde le Carton à Jouets et on peut rejouer.
+function demoEnd() {
+  paused = true;
+  charging = false;
+  statsStep(6);
+  state.demoDone = (state.demoDone || 0) + 1;
+  state.best[state.run.mode] = Math.max(state.best[state.run.mode], state.run.wave);
+  save();
+  setTimeout(() => lbSubmit(), 500);
+  SFX.play('mutation');
+  addShake(0.02);
+  const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined) e.textContent = txt; return e; };
+  modalBox.className = 'modalBox demoEnd';
+  modalBox.replaceChildren();
+  const list = el('ul', 'demoList');
+  for (const t of [T('🐜 3 stades de mutation et 18 sortes d’insectes'), T('🕷 Araignées, scorpions et veuves noires'), T('👑 Le nid de la Reine des cafards à détruire'), T('🛠 Des dizaines d’améliorations en plus')]) list.appendChild(el('li', '', t));
+  const wish = el('a', 'bigBtn', T('⭐ Ajouter à ma liste de souhaits'));
+  wish.href = STEAM_URL; wish.target = '_blank'; wish.rel = 'noopener';
+  wish.onclick = () => statsStep(7);
+  const again = el('button', 'bigBtn', T('🔁 Rejouer la démo'));
+  again.style.background = 'var(--panel-2)'; again.style.color = 'var(--text)';
+  again.onclick = restartRun;
+  const box = el('button', 'bigBtn', T(`📦 Carton à Jouets ({0} 🌊)`, metaBalance()));
+  box.style.background = 'var(--panel-2)'; box.style.color = 'var(--text)';
+  box.onclick = openToybox;
+  const btns = el('div', 'demoBtns');
+  btns.append(wish, again, box);
+  modalBox.append(
+    el('h2', '', T('🧬 Les insectes mutent…')),
+    el('p', 'lead', T(`Fin de la démo ! Tu as tenu jusqu’à la vague {0} : maintenant, les cafards mutent.`, state.run.wave)),
+    el('p', 'demoFull', T('Dans le jeu complet :')), list,
+    el('p', 'lead', T('💾 Ta progression de la démo est gardée dans le jeu complet.')),
+    btns);
+  modal.classList.add('open');
+  cgGameplay(false);
 }
 
 function killBug(b) {
@@ -6547,7 +6598,7 @@ function openCredits({ time, wave, kills, record }) {
   s.add(pivot);
   cr = { renderer, scene: s, cam, pivot, items: creditsItems(), i: 0, obj: null, yaw: 0.5, pitch: 0.25, drag: null, last: performance.now(), w: 0, h: 0 };
   const crShare = document.getElementById('crShare');
-  if (ON_CG) crShare.style.display = 'none';
+  if (NO_LINKS) crShare.style.display = 'none';
   crShare.onclick = () => shareChallenge(T('J’ai détruit le nid de la Reine des cafards en {0} dans Toupie contre Cafards 👑🪳 Tu fais mieux ? 😏', fmtClockLong(time)), crShare, { t: time });
   checkDefiChrono(time);
   document.getElementById('crStats').textContent = T('Nid détruit en ') + fmtClockLong(time) + T(' · vague ') + wave + ' · ' + fmtInt(kills) + T(' insectes écrasés') + (record ? T(' · nouveau record !') : '');
@@ -6975,7 +7026,7 @@ function defeat() {
   share.style.background = 'var(--accent)';
   share.textContent = T('📣 Défie un ami');
   share.onclick = () => shareChallenge(T('J’ai tenu jusqu’à la vague {0} dans Toupie contre Cafards 🌀🪳 Tu fais mieux ? 😏', run.wave), share, { w: run.wave });
-  btns.append(...(ON_CG ? [] : [share]), box, btn);
+  btns.append(...(NO_LINKS ? [] : [share]), box, btn);
   modalBox.append(h, lead, sum, note, btns);
   if (needPseudo() && (state.best.histoire || 1) >= 2) lead.after(pseudoBox(() => { lbSubmit(true); lbSubmitSpeed(true); }));
   modal.classList.add('open');
@@ -7058,6 +7109,7 @@ function openMenu() {
       : best > 1 ? T('Record : vague {0}', best) : '';
   }
   updateMenuSettings();
+  if (DEMO && !TEST_MODE) document.querySelector('#menu .tag').textContent = T('Démo gratuite : repousse les cafards jusqu’à leur mutation !');
   renderDefi();
   renderDailyBtn();
   document.getElementById('replayIntro').style.display = state.introSeen ? '' : 'none';
@@ -7181,9 +7233,9 @@ function renderToybox() {
   const list = document.getElementById('toyList');
   list.replaceChildren();
   for (const t of TOYBOX) {
-    const n = metaLevel(t.id), maxed = n >= t.max, cost = t.cost(n);
+    const n = metaLevel(t.id), maxed = n >= t.max, cost = t.cost(n), demoLock = DEMO && t.mutant;
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'card' + (demoLock ? ' demoLock' : '');
     const name = document.createElement('div');
     name.innerHTML = '<span class="ico"></span><span class="name"></span><span class="lvl"></span>';
     name.querySelector('.ico').textContent = t.icon;
@@ -7191,12 +7243,12 @@ function renderToybox() {
     name.querySelector('.lvl').textContent = t.max > 1 ? `${n} / ${t.max}` : (n ? T('possédé') : '');
     const desc = document.createElement('div');
     desc.className = 'desc';
-    desc.textContent = t.desc(Math.max(1, maxed ? n : n + 1));
+    desc.textContent = demoLock ? T('Sert après la mutation des insectes, dans le jeu complet.') : t.desc(Math.max(1, maxed ? n : n + 1));
     const btn = document.createElement('button');
-    btn.textContent = maxed ? (t.max > 1 ? 'MAX' : '✔') : `${cost} 🌊`;
-    btn.disabled = maxed || metaBalance() < cost;
+    btn.textContent = demoLock ? T('🔒 Jeu complet') : maxed ? (t.max > 1 ? 'MAX' : '✔') : `${cost} 🌊`;
+    btn.disabled = demoLock || maxed || metaBalance() < cost;
     btn.onclick = () => {
-      if (maxed || metaBalance() < cost) return;
+      if (demoLock || maxed || metaBalance() < cost) return;
       state.meta.spent += cost;
       SFX.play('buy');
       state.meta.items[t.id] = n + 1;
@@ -7270,7 +7322,7 @@ const SUPPORT_NAME = T('Louis'); // ← ex. 'Louis' ; vide = formulation neutre 
 (() => {
   const btns = [document.getElementById('coffeeBtn'), document.getElementById('crCoffee')].filter(Boolean);
   if (SUPPORT_NAME) document.querySelectorAll('.coffeeWho').forEach(el => { el.textContent = SUPPORT_NAME; });
-  if (!SUPPORT_URL || ON_CG) { btns.forEach(b => { b.style.display = 'none'; }); return; }
+  if (!SUPPORT_URL || NO_LINKS) { btns.forEach(b => { b.style.display = 'none'; }); return; }
   btns.forEach(b => { b.href = SUPPORT_URL; b.style.display = b.id === 'coffeeBtn' ? 'flex' : 'inline-block'; });
 })();
 
@@ -7376,14 +7428,14 @@ async function shareChallenge(text, btn, kind) {
   catch { prompt(T('Copie ce message et envoie-le à un ami :'), text + ' ' + url); shareReward(); }
 }
 const shareGameBtn = document.getElementById('shareGameBtn');
-if (ON_CG) shareGameBtn.style.display = 'none';
+if (NO_LINKS) shareGameBtn.style.display = 'none';
 shareGameBtn.onclick = () => {
   const b = state.best.histoire || 1;
   const lbl = shareGameBtn.querySelector('.mt');
   if (b >= 3) shareChallenge(T('J’ai tenu jusqu’à la vague {0} dans Toupie contre Cafards 🌀🪳 Tu fais mieux ? 😏', b), lbl, { w: b });
   else shareChallenge(T('Essaie Toupie contre Cafards : lance ta toupie et écrase l’invasion de cafards 🌀🪳 Gratuit, sans pub, dans le navigateur.'), lbl);
 };
-document.getElementById('defiNote').onclick = () => { if (defi && defi.done && !ON_CG) shareGameBtn.click(); };
+document.getElementById('defiNote').onclick = () => { if (defi && defi.done && !NO_LINKS) shareGameBtn.click(); };
 
 const LB_CONFIG = { apiKey: 'AIzaSyA8PL7hfbqEkHbw9_t4Jj2s8aAgBfZBSfc', dbURL: 'https://toupie-cafards-default-rtdb.europe-west1.firebasedatabase.app' };
 const lbReady = () => !!(LB_CONFIG.apiKey && LB_CONFIG.dbURL);
@@ -7425,6 +7477,7 @@ async function lbAuth() {
 const STATS_KEY = 'toupie-cafards-pid';
 const STATS_SITE = (() => {
   if (ON_CG) return 'crazygames';
+  if (ON_STEAM) return DEMO ? 'steam-demo' : 'steam';
   if (NATIVE) return 'appli';
   const host = location.hostname;
   if (!host || host === 'localhost' || host === '127.0.0.1' || /^192\.168\./.test(host)) return '';
@@ -7437,7 +7490,7 @@ const STATS_SITE = (() => {
 })();
 const statsOn = !!(STATS_SITE && !TEST_MODE && LB_CONFIG.dbURL);
 let statsPid = '', statsFirst = false, statsWave = -1;
-// Étape la plus loin atteinte aujourd'hui : 1 entré en jeu, 2 a lancé, 3 a écrasé un insecte, 4 vague 1 repoussée, 5 a acheté une amélioration
+// Étape la plus loin atteinte aujourd'hui : 1 entré en jeu, 2 a lancé, 3 a écrasé un insecte, 4 vague 1 repoussée, 5 a acheté une amélioration, 6 fin de la démo, 7 clic « liste de souhaits »
 let statsE = 0;
 function statsStep(e) {
   if (!statsOn || e <= statsE) return;
@@ -7724,7 +7777,7 @@ function dailyEnd() {
   const menu = el('button', 'bigBtn', T('Menu'));
   menu.style.cssText = 'background: var(--panel-2); color: var(--text)';
   menu.onclick = () => { exitDaily(); openMenu(); };
-  btns.append(again, ...(ON_CG ? [] : [share]), menu);
+  btns.append(again, ...(NO_LINKS ? [] : [share]), menu);
   modalBox.append(h, big, sub, line, ...parts, lb, btns);
   modal.classList.add('open');
   // Envoi du score puis le classement du jour (le haut du tableau, et ma place)
@@ -8031,6 +8084,7 @@ const VERSION = '2026-11-21.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
+  if (ON_STEAM) return;
   try {
     const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return;
@@ -8046,7 +8100,7 @@ updateBar.onclick = () => {
   // Une adresse différente oblige le téléphone à recharger le jeu au lieu de reprendre sa vieille copie
   location.replace(`${location.pathname}?v=${encodeURIComponent(newVersion || Date.now())}`);
 };
-document.getElementById('versionNote').textContent = T(`Version {0}`, VERSION);
+document.getElementById('versionNote').textContent = DEMO ? T(`Démo · version {0}`, VERSION) : T(`Version {0}`, VERSION);
 checkForUpdate();
 setInterval(checkForUpdate, 5 * 60 * 1000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
