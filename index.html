@@ -2028,8 +2028,16 @@ addMesh(new THREE.BoxGeometry(TABLE.w, 0.05, TABLE.d), tableMat, 0, TABLE_Y - 0.
 // Ceinture sous le plateau
 addMesh(new THREE.BoxGeometry(TABLE.w - 0.1, 0.1, TABLE.d - 0.1), tableMat, 0, TABLE_Y - 0.1, TABLE.z);
 // Tiroir côté joueur, avec sa poignée en laiton
-const drawer = addMesh(new THREE.BoxGeometry(0.6, 0.075, 0.02), new THREE.MeshStandardMaterial({ color: 0x7a4e2c, roughness: 0.55 }), 0, TABLE_Y - 0.1, TABLE.z + TABLE.d / 2 - 0.04);
-addMesh(new THREE.CylinderGeometry(0.008, 0.008, 0.09, 12), new THREE.MeshStandardMaterial({ color: 0xc9a227, metalness: 1, roughness: 0.25 }), 0, TABLE_Y - 0.1, TABLE.z + TABLE.d / 2 - 0.02).rotation.z = Math.PI / 2;
+// (un vrai caisson : il sort pendant l'intro, quand on y prend la vieille toupie)
+const drawerBox = new THREE.Group();
+drawerBox.position.set(0, TABLE_Y - 0.1, TABLE.z + TABLE.d / 2 - 0.04);
+scene.add(drawerBox);
+const drawerMat = new THREE.MeshStandardMaterial({ color: 0x7a4e2c, roughness: 0.55 }), drawerIn = new THREE.MeshStandardMaterial({ color: 0x5c3a20, roughness: 0.8 });
+const drawer = addMesh(new THREE.BoxGeometry(0.6, 0.075, 0.02), drawerMat, 0, 0, 0, drawerBox);
+addMesh(new THREE.CylinderGeometry(0.008, 0.008, 0.09, 12), new THREE.MeshStandardMaterial({ color: 0xc9a227, metalness: 1, roughness: 0.25 }), 0, 0, 0.02, drawerBox).rotation.z = Math.PI / 2;
+addMesh(new THREE.BoxGeometry(0.54, 0.008, 0.36), drawerIn, 0, -0.03, -0.19, drawerBox);              // fond
+for (const sx of [-1, 1]) addMesh(new THREE.BoxGeometry(0.01, 0.055, 0.36), drawerIn, sx * 0.27, -0.004, -0.19, drawerBox); // côtés
+addMesh(new THREE.BoxGeometry(0.54, 0.055, 0.01), drawerIn, 0, -0.004, -0.37, drawerBox);             // fond du caisson
 // Pieds fuselés
 const legGeoT = new THREE.CylinderGeometry(0.04, 0.026, -FLOOR_Y + TABLE_Y - 0.05, 16);
 for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
@@ -5143,6 +5151,12 @@ const bannerEl = document.getElementById('banner');
 let bannerTimer = 0;
 // ---------- Sons : tout est fabriqué à la volée avec Web Audio ----------
 const SON_DIR = 'sons/'; // (à plat pour CrazyGames : le script de build le remplace)
+const MODEL_DIR = 'modeles/'; // (idem)
+// Les mains du personnage (vrais modèles 3D articulés, voir mains.js) : chargées en arrière-plan ; si ça échoue, le jeu s'en passe
+let HANDS = null, HAND_POSES = null;
+import('./mains.js').then(m => { HAND_POSES = m.POSES; return m.loadHands(THREE, MODEL_DIR); }).then(h => { HANDS = h; }).catch(e => console.warn('mains 3D indisponibles', e));
+// Mélange de deux poses de main (t de 0 à 1)
+function mixPose(a, b, t) { return [a[0].map((v, i) => v + (b[0][i] - v) * t), a[1] + (b[1] - a[1]) * t]; }
 const SFX = (() => {
   let ctx = null, master = null, hum = null, sfxBus = null, musBus = null;
   // Volumes réglables (0 à 1) : effets et musique. Les anciens réglages activé/coupé comptent encore (coupé = 0).
@@ -5283,6 +5297,8 @@ const SFX = (() => {
     level() { tone(440, 0.18, { type: 'square', vol: 0.06 }); tone(330, 0.3, { type: 'square', vol: 0.06, delay: 0.18 }); },
     mutation() { for (let i = 0; i < 6; i++) tone(200 + 80 * Math.sin(i), 0.25, { type: 'sawtooth', vol: 0.05, delay: i * 0.09, slide: 1.4 }); },
     boing() { tone(220, 0.22, { type: 'sine', vol: 0.15, slide: 2.6 }); },
+    chair() { noise(0.28, { vol: 0.12, freq: 420, type: 'bandpass', q: 1.2, sweep: 0.6 }); tone(180, 0.18, { type: 'triangle', vol: 0.04, slide: 0.8, delay: 0.05 }); },
+    drawer() { noise(0.42, { vol: 0.11, freq: 650, type: 'bandpass', q: 1.6, sweep: 1.7 }); noise(0.05, { vol: 0.08, freq: 1500, type: 'bandpass', q: 3, delay: 0.4 }); },
     fall() {
       // la toupie qui vacille… et se couche (cloc)
       for (let i = 0; i < 3; i++) tone(260 - i * 40, 0.09, { type: 'triangle', vol: 0.06, slide: 0.8, delay: i * 0.08 });
@@ -7247,11 +7263,154 @@ function startIntro() {
   paused = false;  // les cafards bougent pendant l'intro, mais on ne peut pas encore lancer
   dialogLines = INTRO;
   dialogDone = null;
-  introStep = 0;
+  introStep = 0;   // (bloque les lancers tant que l'intro dure)
   refillBoard();
-  showIntroLine();
-  dialogEl.classList.add('open');
-  skipBtn.classList.add('open');
+  playIntroCine();
+}
+// ---- Cinématique d'arrivée (à la première personne) ----
+// 0-3 s : on entre et on s'approche du bureau · 3-4,3 s : on s'assoit, les mains se posent sur le bureau envahi
+// 4,5-6 s : on ouvre le tiroir, la main droite y prend la vieille toupie · 6-7,6 s : on la regarde au creux de la main
+// 7,6-9,4 s : on la pose sur le lanceur pendant que la vue rejoint celle du jeu
+let introCine = null;
+const IC_END = 9.4;
+const icEase = x => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+const icMix = (a, b, t) => a.clone().lerp(b, icEase(t));
+function playIntroCine() {
+  // Le cadrage final (celui du jeu), calculé puis mis de côté pour y arriver en douceur
+  placeCamera();
+  const end = { pos: camera.position.clone(), quat: camera.quaternion.clone(), fov: camera.fov, near: scene.fog.near, far: scene.fog.far };
+  camera.clearViewOffset();
+  // La vieille toupie, rangée dans le tiroir
+  const top = makeTopMesh(drawerBox);
+  top.tilt.scale.setScalar(0.022);
+  top.tilt.position.set(0.06, -0.012, -0.13);
+  top.tilt.rotation.set(0.25, 0, 1.1); // couchée sur le côté
+  introCine = { t: 0, end, top, step: 0, sub: -1, sat: false, opened: false, taken: false, closed: false, placed: false, hands: false };
+  launcher.visible = false;
+  aimLine.visible = false;
+  document.body.classList.add('cine');
+  cineEl.className = 'on black intro';
+  cineSub.classList.remove('on');
+  stepIntroCine(0);
+  requestAnimationFrame(() => requestAnimationFrame(() => cineEl.classList.remove('black')));
+}
+function introHands(on) {
+  if (!HANDS || !introCine) return;
+  for (const h of [HANDS.left, HANDS.right]) { if (on) scene.add(h.root); else scene.remove(h.root); h.sleeve.visible = true; }
+  introCine.hands = on;
+}
+function stepIntroCine(dt) {
+  const c = introCine, t = (c.t += dt);
+  const aspect = camera.aspect || 1, narrow = Math.min(1, aspect / 1.3); // en portrait, on rapproche les mains du centre
+  // --- La caméra (la tête) ---
+  const walk = Math.min(1, t / 3);
+  const P0 = new THREE.Vector3(0.28, 0.86, 2.45), P1 = new THREE.Vector3(0.03, 0.84, 1.2), PS = new THREE.Vector3(0, 0.43, 1.0);
+  let pos = P0.clone().lerp(P1, 1 - (1 - walk) * (1 - walk));
+  const ph = walk * 9.5;
+  const stepNo = Math.floor(ph / Math.PI);
+  if (stepNo > c.step && walk < 1) { c.step = stepNo; SFX.play('step'); }
+  pos.y += 0.012 * Math.abs(Math.sin(ph)) * (1 - walk);
+  pos = icMix(pos, PS, (t - 3) / 1.2);
+  if (!c.sat && t > 3.4) { c.sat = true; SFX.play('chair'); }
+  // où regarde-t-on : le bureau, puis le tiroir, puis la toupie dans la main
+  const lookDesk = new THREE.Vector3(0, -0.04, 0.12), lookDrawer = new THREE.Vector3(0.02, -0.12, 0.74), lookHand = new THREE.Vector3(0.02, 0.27, 0.74);
+  let look = icMix(new THREE.Vector3(0, 0.1, -0.2), lookDesk, (t - 1.5) / 2.2);
+  look = icMix(look, lookDrawer, (t - 4.4) / 0.8);
+  look = icMix(look, lookHand, (t - 5.8) / 0.9);
+  // dernière étape : on rejoint le cadrage du jeu
+  const k = icEase((t - 7.6) / 1.8);
+  camera.position.copy(pos);
+  camera.up.set(0, 1, 0);
+  camera.lookAt(look);
+  camera.rotation.z += 0.01 * Math.sin(ph) * (1 - walk);
+  if (k > 0) { camera.position.lerp(c.end.pos, k); camera.quaternion.slerp(c.end.quat, k); }
+  camera.fov = 60 + (c.end.fov - 60) * k;
+  camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+  scene.fog.near = 3 + (c.end.near - 3) * k; scene.fog.far = 7.5 + (c.end.far - 7.5) * k;
+  // --- Le tiroir ---
+  const open = icEase((t - 4.7) / 0.6) * (1 - icEase((t - 6.4) / 0.6));
+  if (!c.opened && t > 4.7) { c.opened = true; SFX.play('drawer'); }
+  if (!c.closed && t > 6.4) { c.closed = true; SFX.play('drawer'); }
+  drawerBox.position.z = TABLE.z + TABLE.d / 2 - 0.04 + 0.24 * open;
+  // --- Les mains ---
+  if (HANDS && t > 3.3 && t < IC_END && !c.hands) introHands(true);
+  if (c.hands) {
+    const L = HANDS.left, R = HANDS.right, P = HAND_POSES;
+    const fwd = new THREE.Vector3(0, -0.05, -1), up = new THREE.Vector3(0, 1, 0);
+    // arrivée des mains : elles montent du bas et se posent sur le bureau
+    const land = icEase((t - 3.3) / 0.9), leave = icEase((t - 8.2) / 1.0);
+    const restL = new THREE.Vector3(-0.17 * narrow, 0.024, 0.665), restR = new THREE.Vector3(0.17 * narrow, 0.024, 0.665);
+    const below = new THREE.Vector3(0, -0.25, 0.25);
+    L.orient(fwd, up);
+    L.placeWrist(restL.clone().add(below.clone().multiplyScalar(1 - land + leave)));
+    L.pose(...mixPose(P.repos, P.plate, land));
+    // la main droite : posée, puis dans le tiroir, puis la toupie au creux de la main, puis vers le lanceur
+    const inDrawer = new THREE.Vector3(0.07, -0.06, 0.815), show = new THREE.Vector3(0.05, 0.2, 0.86), toLaunch = new THREE.Vector3(0.02, 0.06, LAUNCH.y + 0.14);
+    let w = restR.clone().add(below.clone().multiplyScalar(1 - land));
+    w = icMix(w, inDrawer, (t - 4.6) / 0.8);
+    w = icMix(w, show, (t - 5.9) / 0.8);
+    w = icMix(w, toLaunch, (t - 7.6) / 0.7);
+    w.add(below.clone().multiplyScalar(icEase((t - 8.4) / 0.8)));
+    // orientation : à plat → doigts vers le fond du tiroir → paume vers le haut (on regarde la toupie) → à plat au-dessus du lanceur
+    const reach = icEase((t - 4.6) / 0.6), palmUp = icEase((t - 5.9) / 0.7) * (1 - icEase((t - 7.6) / 0.5));
+    const fd = fwd.clone().lerp(new THREE.Vector3(0, -0.55, -0.83), reach * (1 - palmUp)).lerp(new THREE.Vector3(-0.15, 0.1, -1), palmUp).normalize();
+    const bk = up.clone().lerp(new THREE.Vector3(0, 0.83, -0.55), reach * (1 - palmUp)).lerp(new THREE.Vector3(0.1, -1, 0.1), palmUp).normalize();
+    R.orient(fd, bk);
+    R.placeWrist(w);
+    const grab = icEase((t - 5.3) / 0.3);
+    let pose = mixPose(P.repos, P.plate, land);
+    pose = mixPose(pose, P.attrape, icEase((t - 4.7) / 0.5));
+    pose = mixPose(pose, P.tient, grab);
+    pose = mixPose(pose, [[0.3, 0.42, 0.48, 0.52, 0.58], 0.05], icEase((t - 6.0) / 0.5)); // main en coupe, la toupie au creux
+    pose = mixPose(pose, P.attrape, icEase((t - 7.9) / 0.3));
+    R.pose(...pose);
+    // la toupie suit la main droite une fois prise
+    if (!c.taken && t > 5.45) {
+      c.taken = true; SFX.play('pick');
+      scene.attach(c.top.tilt);
+    }
+    if (c.taken && !c.placed) {
+      R.root.updateMatrixWorld(true);
+      const mid = new THREE.Vector3().setFromMatrixPosition(R.bones['middle-finger-metacarpal'].matrixWorld);
+      const palmN = new THREE.Vector3().setFromMatrixPosition(R.bones['wrist'].matrixWorld).sub(mid).cross(bk).normalize();
+      const target = mid.clone().addScaledVector(bk, -0.028 - S.radius * 0.2);
+      if (palmUp > 0.5) target.copy(mid).addScaledVector(bk, -0.042); // posée au creux de la main
+      c.top.tilt.position.lerp(target, Math.min(1, dt * 18 + (t < 5.6 ? 0.5 : 0)));
+      c.top.tilt.quaternion.slerp(new THREE.Quaternion().setFromEuler(new THREE.Euler(palmUp > 0.5 ? 0.05 : 0.6, 0, palmUp > 0.5 ? 0.08 : 0.9)), Math.min(1, dt * 6));
+      c.top.spinner.rotation.y += dt * (palmUp > 0.5 ? 2.5 : 0);
+      void palmN;
+    }
+    if (!c.placed && t > 8.25) {
+      c.placed = true; SFX.play('boing');
+      c.top.tilt.parent?.remove(c.top.tilt); disposeTop(c.top);
+      launcher.visible = true;
+    }
+  }
+  // --- Sous-titres : les trois répliques de l'intro ---
+  const SUBS = [[0.8, 4.4, 0], [5.5, 7.8, 1], [7.9, IC_END + 0.3, 2]];
+  const si = SUBS.findIndex(([a, b2]) => t >= a && t < b2);
+  if (si !== c.sub) {
+    c.sub = si;
+    if (si >= 0) { cineSub.textContent = INTRO[SUBS[si][2]].text; cineSub.classList.add('on'); } else cineSub.classList.remove('on');
+  }
+  if (t >= IC_END) finishIntroCine();
+}
+function skipIntroCine() { if (introCine) { introCine.t = Math.max(introCine.t, IC_END - 0.001); stepIntroCine(0.001); } }
+function finishIntroCine() {
+  const c = introCine;
+  if (!c) return;
+  introCine = null;
+  introHands(false);
+  if (HANDS) for (const h of [HANDS.left, HANDS.right]) scene.remove(h.root);
+  if (!c.placed && c.top) { c.top.tilt.parent?.remove(c.top.tilt); disposeTop(c.top); }
+  drawerBox.position.z = TABLE.z + TABLE.d / 2 - 0.04;
+  cineSub.classList.remove('on');
+  cineEl.className = '';
+  document.body.classList.remove('cine');
+  launcher.visible = true;
+  placeCamera();
+  endIntro();
 }
 function showIntroLine() {
   const l = dialogLines[introStep];
@@ -7295,7 +7454,7 @@ function endIntro() {
   maybeLaunchTuto();
 }
 dialogEl.addEventListener('click', nextIntroLine);
-skipBtn.addEventListener('click', endIntro);
+skipBtn.addEventListener('click', () => (introCine ? skipIntroCine() : endIntro()));
 document.getElementById('storyBtn').onclick = () => enterMode('histoire');
 document.getElementById('replayIntro').onclick = () => enterMode('histoire', { forceIntro: true });
 
@@ -8164,7 +8323,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-22.1';
+const VERSION = '2026-11-22.2';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -8520,11 +8679,35 @@ function makeHandMesh() {
   curl(0);
   return { group: g, top, curl };
 }
+// La main droite (modèle 3D) paume vers le haut, la toupie debout au creux de la main ; curl(c) referme les doigts autour
+function makeHandRig() {
+  const H = HANDS.right, g = new THREE.Group();
+  g.add(H.root);
+  H.sleeve.visible = true;
+  H.orient(new THREE.Vector3(0, 0, -1), new THREE.Vector3(0, -1, 0));
+  H.root.scale.setScalar(0.82); // un peu plus petite que nature : elle est tout près des yeux
+  H.placeWrist(new THREE.Vector3(0, 0, 0));
+  const cup = [[0.3, 0.42, 0.48, 0.52, 0.58], 0.05], grip = [[0.55, 0.62, 0.68, 0.72, 0.76], 0];
+  H.pose(...cup);
+  // le creux de la paume (milieu du métacarpe du majeur) ramené à l'origine du groupe, là où se tenait la toupie
+  g.updateMatrixWorld(true);
+  const mid = g.worldToLocal(new THREE.Vector3().setFromMatrixPosition(H.bones['middle-finger-metacarpal'].matrixWorld));
+  H.root.position.sub(mid).add(new THREE.Vector3(0, -0.012, 0));
+  const holder = new THREE.Group();
+  holder.position.set(0, 0.014, -0.004);
+  holder.rotation.z = 0.08;
+  g.add(holder);
+  const top = makeTopMesh(holder);
+  top.tilt.scale.setScalar(0.02);
+  let lastC = -1;
+  const curl = c => { if (Math.abs(c - lastC) < 0.01) return; lastC = c; H.pose(...mixPose(cup, grip, c)); };
+  return { group: g, top, curl, release: () => g.remove(H.root) };
+}
 function playNestCinematic(done) {
   const b = nest?.boss;
   if (b) { b.drop = 0; b.landT = 0; }
   if (!camera.parent) scene.add(camera);
-  const hand = makeHandMesh();
+  const hand = HANDS ? makeHandRig() : makeHandMesh();
   hand.group.scale.setScalar(0.6);
   camera.add(hand.group);
   const light = new THREE.PointLight(0xffd8b8, 0.012, 0.5);
@@ -8610,7 +8793,8 @@ function finishCinematic() {
   cineSub.classList.remove('on');
   camera.remove(c.hand.group, c.light);
   disposeTop(c.hand.top);
-  c.hand.group.traverse(m => { if (m.isMesh && !m.geometry.userData.keep) { m.geometry.dispose(); [].concat(m.material).forEach(x => x.dispose()); } });
+  if (c.hand.release) c.hand.release(); // (la main 3D est gardée pour la prochaine fois)
+  else c.hand.group.traverse(m => { if (m.isMesh && !m.geometry.userData.keep) { m.geometry.dispose(); [].concat(m.material).forEach(x => x.dispose()); } });
   camera.rotation.order = 'XYZ';
   launcher.visible = true;
   document.body.classList.remove('cine');
@@ -8621,7 +8805,9 @@ function finishCinematic() {
     setTimeout(() => { cineEl.className = ''; c.done?.(); }, 650);
   }, 250);
 }
-document.getElementById('cineSkip').addEventListener('click', e => { e.stopPropagation(); skipCinematic(); });
+document.getElementById('cineSkip').addEventListener('click', e => { e.stopPropagation(); if (introCine) skipIntroCine(); else skipCinematic(); });
+// Toucher l'écran pendant l'intro la passe
+cineEl.addEventListener('pointerdown', () => { if (introCine) skipIntroCine(); });
 
 // =====================================================================
 //  TUTORIEL DU PREMIER LANCER : on le MONTRE à l'écran (main animée, flèches, barre en grand), sans compter sur la lecture
@@ -9424,6 +9610,7 @@ function frame(now) {
   if (run && run.timed && run.mode === 'histoire' && !run.over && !cr && !menuEl.classList.contains('open') && !pauseEl.classList.contains('open')
     && document.visibilityState === 'visible') run.time = (run.time || 0) + dt;
   if (cine) stepCinematic(dt);
+  if (introCine) stepIntroCine(dt);
   updateCoach();
   if (introTop) animateIntroTop(dt);
   animateSteam(dt);
@@ -9814,7 +10001,7 @@ window.__dbg = {
   state, SFX, lbAuth, lbSubmit, lbFetch, startNest, LATE, buildLauncher, launcher, get charging() { return charging; }, setCharging: v => { charging = v; chargeT = v ? 0.5 : 0; }, setTired: v => { TOP_TIRED = v; },
   setQuota: (t, after) => { if (t) QUOTA_TABLE = t; if (after) QUOTA_AFTER = after; }, quotaAt, get QUOTA_TABLE() { return QUOTA_TABLE; }, get nest() { return nest; }, get qte() { return qte; }, qteResolve, endQte, startQte: id => startQte(QTE_PATTERNS.find(p => p.id === id)), setNestK: (k, p, pause, cap, cd) => { if (cap) NEST_HIT_CAP = cap; if (cd) NEST_TOP_CD = cd; NEST_HP_K = k; if (p !== undefined) NEST_PULL = p; if (pause) NEST_PAUSE = pause; }, get S() { return S; }, tops, bugs, update, launchTops, spawnBug, killBug, BUG_TYPES, bugType, webs, mutate, UPGRADES, PERKS, buy, costOf, infestLevel,
   refreshStats, camera, THREE, takePerk, restartRun, get paused() { return paused; }, endWave, makeTopMesh, makeBugMesh, scene, defeat,
-  enterMode, openMenu, isReady, get introStep() { return introStep; }, nextIntroLine, openPause, checkForUpdate,
+  enterMode, openMenu, isReady, get introStep() { return introStep; }, get introCine() { return introCine; }, get HANDS() { return HANDS; }, startIntro, drawerBox, nextIntroLine, openPause, checkForUpdate,
   upgradeLock, applyToybox, metaBalance, openToybox, rebuildToyDecor, waveQuota, TOYBOX, previewRoot, previewCam,
 };
 </script>

@@ -15,8 +15,8 @@ const jeu = path.join(appDir, 'jeu');
 const OUT = 'C:/Users/louis/Documents/Itch-Toupie/steam/builds';
 
 // 1. Les fichiers du jeu (les mêmes que pour les applications mobiles), copiés dans steam-app/jeu
-const FILES = ['index.html', 'i18n.js', 'version.json', 'confidentialite.html'];
-const DIRS = ['vendor', 'app-assets', 'sons'];
+const FILES = ['index.html', 'i18n.js', 'mains.js', 'version.json', 'confidentialite.html'];
+const DIRS = ['vendor', 'app-assets', 'sons', 'modeles'];
 fs.rmSync(jeu, { recursive: true, force: true });
 fs.mkdirSync(jeu, { recursive: true });
 for (const f of FILES) fs.copyFileSync(path.join(root, f), path.join(jeu, f));

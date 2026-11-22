@@ -53,6 +53,11 @@ export const FILMS = {
       endCard(130, 5),
     ],
   },
+  // L'intro du jeu (cinématique d'arrivée au bureau), telle que la voit un nouveau joueur
+  'intro': {
+    width: 1280, height: 720,
+    shots: [{ name: 'intro', test: 'vintro', setup: "d.enterMode('histoire', { forceIntro: true });", dur: 10.5, fadeIn: 0 }],
+  },
   // Écoute des sons : une toupie seule (souffle, contacts, écrasements), puis trois toupies en pleine foule (pas d'empilement)
   'test-son': {
     width: 1280, height: 720,

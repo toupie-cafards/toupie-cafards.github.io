@@ -13,6 +13,10 @@ fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 for (const f of ['index.html', 'i18n.js', 'version.json']) fs.copyFileSync(path.join(root, f), path.join(out, f));
 fs.copyFileSync(path.join(root, 'vendor', 'three.module.js'), path.join(out, 'three.module.js'));
+for (const f of ['GLTFLoader.js', 'BufferGeometryUtils.js']) fs.copyFileSync(path.join(root, 'vendor', f), path.join(out, f));
+// Les mains 3D : mains.js et les modèles, à plat (chemins réécrits)
+fs.writeFileSync(path.join(out, 'mains.js'), fs.readFileSync(path.join(root, 'mains.js'), 'utf8').split("'./vendor/GLTFLoader.js'").join("'./GLTFLoader.js'"));
+for (const f of fs.readdirSync(path.join(root, 'modeles'))) if (/.glb$/.test(f)) fs.copyFileSync(path.join(root, 'modeles', f), path.join(out, f));
 fs.copyFileSync(path.join(root, 'app-assets', 'icon-192.png'), path.join(out, 'icon-192.png'));
 // Les sons, à plat eux aussi
 for (const f of fs.readdirSync(path.join(root, 'sons'))) if (/\.(wav|mp3)$/.test(f)) fs.copyFileSync(path.join(root, 'sons', f), path.join(out, f));
@@ -27,6 +31,8 @@ html = html.split(anchor).join(
 html = html.split('./vendor/three.module.js').join('./three.module.js');
 if (html.split("const SON_DIR = 'sons/';").length !== 2) throw new Error('SON_DIR introuvable');
 html = html.split("const SON_DIR = 'sons/';").join("const SON_DIR = '';");
+if (html.split("const MODEL_DIR = 'modeles/';").length !== 2) throw new Error('MODEL_DIR introuvable');
+html = html.split("const MODEL_DIR = 'modeles/';").join("const MODEL_DIR = '';");
 html = html.split('href="app-assets/icon-192.png"').join('href="icon-192.png"');
 html = html.split("'app-assets/icon-512.png'").join("'icon-192.png'"); // image de partage (inutilisée : partage masqué sur CrazyGames)
 // pas de manifeste d'appli, d'adresse canonique ni d'aperçu de partage vers le site
