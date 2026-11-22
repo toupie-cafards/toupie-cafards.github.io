@@ -7,10 +7,10 @@ import os from 'node:os';
 const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-export async function openChrome({ lang = 'en', width = 1920, height = 1080, port = 9340 } = {}) {
+export async function openChrome({ lang = 'en', width = 1920, height = 1080, port = 9340, args = [], mute = true } = {}) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'toupie-steam-'));
   const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, `--lang=${lang}`,
-    '--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--hide-scrollbars', '--mute-audio', '--no-first-run',
+    '--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--hide-scrollbars', ...(mute ? ['--mute-audio'] : []), '--no-first-run', ...args,
     `--window-size=${width},${height}`, 'about:blank'], { stdio: 'ignore' });
   let target;
   for (let i = 0; i < 50 && !target; i++) {
@@ -41,5 +41,5 @@ export async function openChrome({ lang = 'en', width = 1920, height = 1080, por
     await sleep(500);
     try { fs.rmSync(profile, { recursive: true, force: true }); } catch { /* Chrome tient encore le dossier */ }
   };
-  return { send, evaluate, close };
+  return { send, evaluate, close, ws };
 }
