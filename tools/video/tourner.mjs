@@ -33,7 +33,11 @@ const INIT = `(() => {
     async stop() { if (!this.r) return ''; await new Promise(ok => { this.r.onstop = ok; this.r.stop(); }); const b = new Blob(this.c, { type: 'audio/webm' }); const buf = new Uint8Array(await b.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(s); } };
   addEventListener('DOMContentLoaded', () => {
     const st = document.createElement('style');
-    st.textContent = \`#toast, #pickBtn, #menuBtn, #speedBtn, #updateBar, #coach { display: none !important; }
+    st.textContent = \`#toast, #pickBtn, #menuBtn, #speedBtn, #updateBar, #coach, #cineSub, #cineSkip, #skipIntro { display: none !important; }
+      /* pendant une cinématique, le jeu masque tout sauf la scène : nos textes doivent rester visibles */
+      html body.cine > .vcap:not(#a):not(#b), html body.cine > .vend:not(#a):not(#b) { visibility: visible !important; }
+      /* zoom de l'atelier : une règle CSS, car l'arbre est reconstruit à chaque achat */
+      body.vzoomTree #tree .treeIn { transform: scale(1.75) !important; transform-origin: center center !important; }
       .vcap { position: fixed; left: 50%; transform: translateX(-50%); z-index: 99999; text-align: center; pointer-events: none; width: 92%;
         font: 900 var(--s, 64px)/1.08 "Segoe UI Black", "Segoe UI", system-ui, sans-serif; color: #fff; letter-spacing: .01em;
         -webkit-text-stroke: calc(var(--s, 64px) * .09) #2a1203; paint-order: stroke fill; text-shadow: 0 .08em .25em rgba(0,0,0,.55);
@@ -53,6 +57,8 @@ const INIT = `(() => {
     if (o.bottom !== undefined) e.style.bottom = o.bottom; else e.style.top = o.y || '8%';
     document.body.append(e); requestAnimationFrame(() => requestAnimationFrame(() => e.classList.add('on')));
     if (o.ms) setTimeout(() => { e.classList.remove('on'); setTimeout(() => e.remove(), 400); }, o.ms); return e; };
+  // Zoom de l'atelier (×1,75), à réappliquer après chaque achat
+  window.__zoomTree = () => document.body.classList.add('vzoomTree');
   window.__end = (html) => { const e = document.createElement('div'); e.className = 'vend'; e.innerHTML = html; document.body.append(e); requestAnimationFrame(() => requestAnimationFrame(() => e.classList.add('on'))); };
 })()`;
 
@@ -154,9 +160,9 @@ try {
   const out = path.join(OUT_DIR, `${FILM}-${LANG}.mp4`);
   if (mus) {
     ff(['-i', joined, '-i', mus, '-filter_complex',
-      `[1:a]atrim=start=0.5,asetpts=PTS-STARTPTS,volume=${film.musicVol ?? 0.8},afade=t=in:d=0.6,afade=t=out:st=${(total - 2).toFixed(2)}:d=2[m];[0:a]volume=${film.sfxVol ?? 1}[s];[s][m]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95[a]`,
+      `[1:a]atrim=start=0.5,asetpts=PTS-STARTPTS,volume=${film.musicVol ?? 0.8},afade=t=in:d=0.6,afade=t=out:st=${(total - 2).toFixed(2)}:d=2[m];[0:a]volume=${film.sfxVol ?? 1}[s];[s][m]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000[a]`,
       '-map', '0:v', '-map', '[a]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]);
-  } else ff(['-i', joined, '-c', 'copy', '-movflags', '+faststart', out]);
+  } else ff(['-i', joined, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]);
   console.log('🎬', out, `(${total.toFixed(1)} s)`);
 } catch (e) {
   console.error('✖', e.message);

@@ -18,17 +18,20 @@ const SCENES = {
   vague1: `r.wave = 1; r.cash = 0; ${GO(5000)}`,
   milieu: `${L_MILIEU} r.wave = 22; r.cash = 2.4e6; r.infest = 4000; ${GO(9000)}`,
   milieuMulti: `${L_MILIEU} r.levels.multi = 2; r.wave = 22; r.cash = 2.4e6; r.infest = 4000; ${GO(9000)}`,
-  atelier: `Object.assign(r.levels, { diametre: 14, endurance: 18, poids: 12, lames: 15, pointe: 9, inertie: 8, rebond: 4, equilibre: 6, critique: 5, puissance: 16, elan: 10, appat: 12, nid: 6 }); r.wave = 14; r.cash = 9e6; d.enterMode('histoire'); await W(2500); document.getElementById('shopBtn').click(); await W(1200); const ti = document.querySelector('.treeIn'); ti.style.transform += ' scale(1.75)'; ti.style.transformOrigin = 'center center'; await W(300);`,
+  atelier: `Object.assign(r.levels, { diametre: 14, endurance: 18, poids: 12, lames: 15, pointe: 9, inertie: 8, rebond: 4, equilibre: 6, critique: 5, puissance: 16, elan: 10, appat: 12, nid: 6 }); r.wave = 14; r.cash = 9e6; d.enterMode('histoire'); await W(2500); document.getElementById('shopBtn').click(); await W(1200); window.__zoomTree(); await W(300);`,
   mutants: `${L_MUTANTS} r.wave = 31; r.cash = 8.7e8; r.toyboxApplied = true; r.infest = 13900; r.stageSeen = 1; ${GO(9000)}`,
   araignees: `${L_FIN} r.infest = 72100; r.stageSeen = 2; r.wave = 43; r.cash = 1.2e9; r.toyboxApplied = true; ${GO(10000)}`,
   essaim: `${L_FIN.replace('multi: 2, ', '')} r.wave = 22; r.cash = 2.4e6; r.infest = 1600; ${GO(9000)}`,
   vague40: `${L_FIN} r.infest = 72100; r.stageSeen = 2; r.wave = 40; r.cash = 9.8e8; r.toyboxApplied = true; ${GO(10000)}`,
+  // l'intro du jeu, prise à 3,2 s (on vient de s'asseoir) : les mains se posent, le tiroir, la toupie au creux de la main
+  intro: `d.enterMode('histoire', { forceIntro: true }); for (let i = 0; i < 400 && !(d.introCine && d.introCine.t >= 3.2); i++) await W(15);`,
   reine: `d.enterMode('histoire'); await W(2500); document.getElementById('cineSkip')?.click(); await W(1500);
     for (let i = 0; i < 14; i++) { document.getElementById('skipIntro')?.click(); document.getElementById('dialog')?.click(); await W(300); } await W(2500);`,
 };
 
 // Achats à l'atelier, un toutes les 0,55 s (on filme les cercles qui se remplissent)
-const BUY = `for (let k = 0; k < 8; k++) { const n = [...document.querySelectorAll('.tnode:not(.locked):not(.maxed)')][k % 5]; if (n) n.click(); await W(550); }`;
+// (renderTree() remet le zoom de l'atelier à zéro à chaque achat : on le réapplique aussitôt)
+const BUY = `for (let k = 0; k < 8; k++) { const n = [...document.querySelectorAll('.tnode:not(.locked):not(.maxed)')][k % 5]; if (n) n.click(); window.__zoomTree(); await W(550); }`;
 
 const END = {
   en: (s) => `<div class="vcap" style="--s:${s}px">Spinning Top<br><span class="g">vs Roaches</span></div><div class="btn">Wishlist now on Steam</div><div class="sub">Free demo coming soon</div>`,
@@ -40,12 +43,13 @@ const BOTTOM = (text, at = 250, ms) => ({ text, at, ms, o: { bottom: '8%', s: 70
 const TOP = (text, at = 0, ms, s = 84) => ({ text, at, ms, o: { y: '9%', s } });
 
 export const FILMS = {
-  // Bande-annonce Steam, 1920×1080, environ 40 s
+  // Bande-annonce Steam, 1920×1080, environ 45 s
   'bande-annonce': {
     width: 1920, height: 1080, musicVol: 0.7,
     shots: [
-      { name: 'debut', test: 'v1', setup: SCENES.debut, zoom: 2, action: LAUNCH(), dur: 4.5, caps: [BOTTOM({ en: 'Your desk is overrun with cockroaches.', fr: 'Mon bureau est envahi de cafards.' }, 300, 3800)] },
-      { name: 'milieu', test: 'v2', setup: SCENES.milieuMulti, zoom: 1, action: LAUNCH(0.1, 1), dur: 5.5, caps: [BOTTOM({ en: 'My only weapon: an old <span class="g">spinning top</span>.', fr: 'Ma seule arme : une vieille <span class="g">toupie</span>.' }, 300, 4800)] },
+      { name: 'intro', test: 'vintro', setup: SCENES.intro, dur: 4.6, fadeIn: 0.5, caps: [BOTTOM({ en: 'My desk is overrun with cockroaches.', fr: 'Mon bureau est envahi de cafards.' }, 200, 2200), BOTTOM({ en: 'My only weapon: an old <span class="g">spinning top</span>.', fr: 'Ma seule arme : une vieille <span class="g">toupie</span>.' }, 2600, 1900)] },
+      { name: 'debut', test: 'v1', setup: SCENES.debut, zoom: 2, action: LAUNCH(), dur: 4.5, caps: [BOTTOM({ en: 'Launch it. Crush them all.', fr: 'Je la lance. Je les écrase tous.' }, 300, 3800)] },
+      { name: 'milieu', test: 'v2', setup: SCENES.milieuMulti, zoom: 1, action: LAUNCH(0.1, 1), dur: 5.5, caps: [BOTTOM({ en: 'Combo after <span class="g">combo</span>.', fr: 'Combo après <span class="g">combo</span>.' }, 300, 4800)] },
       { name: 'atelier', test: 'v3', setup: SCENES.atelier, action: BUY, dur: 4.5, caps: [BOTTOM({ en: 'Upgrade it. Again. And again.', fr: 'Je l’améliore. Encore. Et encore.' }, 200, 4000)] },
       { name: 'mutants', test: 'v4', setup: SCENES.mutants, zoom: 1, action: LAUNCH(-0.2, 1), dur: 6, caps: [BOTTOM({ en: 'Then the bugs <span class="g">mutate</span>…', fr: 'Puis les insectes <span class="g">mutent</span>…' }, 300, 5200)] },
       { name: 'araignees', test: 'v5', setup: SCENES.araignees, zoom: 1, action: LAUNCH(0.25, 1), dur: 6, caps: [BOTTOM({ en: '…and the <span class="g">spiders</span> arrive.', fr: '…et les <span class="g">araignées</span> débarquent.' }, 300, 5200)] },
