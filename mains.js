@@ -117,10 +117,10 @@ export async function loadHands(THREE, dir = 'modeles/') {
     }
     // Manche de pull : cylindre tricoté qui part du poignet vers le coude
     const sleeve = new THREE.Group();
-    const sl = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.05, 0.26, 32, 1, true), sleeveMat);
-    sl.material.map.repeat.set(3, 1);
-    sl.position.y = -0.18; sleeve.add(sl);
-    const capB = new THREE.Mesh(new THREE.CircleGeometry(0.05, 32), sleeveMat); capB.rotation.x = Math.PI / 2; capB.position.y = -0.28; sleeve.add(capB);
+    const sl = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.056, 0.62, 32, 16, true), sleeveMat);
+    sl.material.map.repeat.set(3, 2.4);
+    sl.position.y = -0.36; sleeve.add(sl); // longue : son bout reste hors du champ, même quand on regarde le tiroir
+    const capB = new THREE.Mesh(new THREE.CircleGeometry(0.056, 32), sleeveMat); capB.rotation.x = Math.PI / 2; capB.position.y = -0.66; sleeve.add(capB);
     // Bord côtelé du poignet : un manchon un peu plus serré, à fines côtes, arrondi au bord
     const cuffTex = knitTexture(THREE, '#2c4f96'); cuffTex.repeat.set(9, 0.6);
     const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.039, 0.043, 0.04, 40, 1, true), new THREE.MeshStandardMaterial({ map: cuffTex, roughness: 0.95 }));

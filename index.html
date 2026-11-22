@@ -7298,7 +7298,65 @@ function introHands(on) {
   if (!HANDS || !introCine) return;
   for (const h of [HANDS.left, HANDS.right]) { if (on) scene.add(h.root); else scene.remove(h.root); h.sleeve.visible = true; }
   introCine.hands = on;
+  if (on) introCine.obst = icObstacles(introCine.top.tilt);
 }
+// Contact des mains avec les meubles : la table, le plateau de jeu et ses rebords, le tiroir.
+// Chaque image, on remonte la main juste assez pour qu'aucun point de la peau ni de la manche n'y entre :
+// posée, elle repose vraiment sur ce qu'il y a dessous, sans passer au travers.
+function icObstacles(exclude) {
+  const skip = new Set();
+  for (const h of [HANDS.left, HANDS.right]) h.root.traverse(o => skip.add(o));
+  exclude?.traverse(o => skip.add(o));
+  const inDrawer = new Set(); drawerBox.traverse(o => inDrawer.add(o));
+  const reg = new THREE.Box3(new THREE.Vector3(-0.9, -0.35, 0.05), new THREE.Vector3(0.9, 0.45, 1.3));
+  const list = [];
+  scene.updateMatrixWorld(true);
+  scene.traverse(o => {
+    if (!o.isMesh || o.isSkinnedMesh || skip.has(o) || !o.geometry) return;
+    const g = o.geometry;
+    if (g.type !== 'BoxGeometry' && g.type !== 'CylinderGeometry') return;
+    if (!g.boundingBox) g.computeBoundingBox();
+    const wb = g.boundingBox.clone().applyMatrix4(o.matrixWorld), sz = wb.getSize(new THREE.Vector3());
+    if (!wb.intersectsBox(reg) || sz.x > 3 || sz.z > 3) return;
+    // seulement les meubles : pas les insectes ni les petites pièces du lanceur
+    if (!inDrawer.has(o) && Math.max(sz.x, sz.z) < 0.2) return;
+    list.push({ o, box: new THREE.Box3() });
+  });
+  return list;
+}
+const _icV = new THREE.Vector3();
+function icContact(h, obst) {
+  if (!obst) return 0;
+  for (const ob of obst) { ob.o.updateWorldMatrix(true, false); ob.box.copy(ob.o.geometry.boundingBox).applyMatrix4(ob.o.matrixWorld); }
+  const meshes = h.contactMeshes || (h.contactMeshes = (() => { const a = []; h.root.traverse(o => { if (o.isMesh) a.push(o); }); return a; })());
+  let total = 0;
+  // quelques passes : une fois remontée, la main peut se retrouver au-dessus d'une nouvelle surface (le rebord du plateau)
+  for (let pass = 0; pass < 3; pass++) {
+    h.root.updateMatrixWorld(true);
+    // seules comptent les surfaces sous la main (le poignet est au-dessus) : dans le tiroir, le dessous de la table n'est pas un appui
+    const wy = _icV.copy(h.wrist).applyMatrix4(h.root.matrixWorld).y;
+    const sup = obst.filter(ob => wy > ob.box.max.y - 0.01).map(ob => ob.box);
+    // hauteur à rattraper : le point le plus enfoncé sous le dessus d'une surface (en une fois, comme sur un relief)
+    let lift = 0;
+    for (const m of meshes) {
+      if (!m.visible) continue;
+      const pos = m.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        m.getVertexPosition(i, _icV).applyMatrix4(m.matrixWorld);
+        for (const b of sup) {
+          if (_icV.y < b.max.y && _icV.x > b.min.x && _icV.x < b.max.x && _icV.z > b.min.z && _icV.z < b.max.z && b.max.y - _icV.y > lift) lift = b.max.y - _icV.y;
+        }
+      }
+    }
+    if (lift <= 0) break;
+    h.root.position.y += lift + 0.0015;
+    total += lift;
+  }
+  h.root.updateMatrixWorld(true);
+  return total;
+}
+// Arrivée / départ d'une main : elle vient de devant, à hauteur du bureau, puis se pose (jamais par en dessous)
+const icApproach = a => new THREE.Vector3(0, -0.16 * a * a + 0.08 * a, 0.32 * a);
 function stepIntroCine(dt) {
   const c = introCine, t = (c.t += dt);
   const aspect = camera.aspect || 1, narrow = Math.min(1, aspect / 1.3); // en portrait, on rapproche les mains du centre
@@ -7340,18 +7398,21 @@ function stepIntroCine(dt) {
     const fwd = new THREE.Vector3(0, -0.05, -1), up = new THREE.Vector3(0, 1, 0);
     // arrivée des mains : elles montent du bas et se posent sur le bureau
     const land = icEase((t - 3.3) / 0.9), leave = icEase((t - 8.2) / 1.0);
-    const restL = new THREE.Vector3(-0.17 * narrow, 0.024, 0.665), restR = new THREE.Vector3(0.17 * narrow, 0.024, 0.665);
-    const below = new THREE.Vector3(0, -0.25, 0.25);
+    // (posées un peu bas : le contact les remonte exactement sur le bureau)
+    const restL = new THREE.Vector3(-0.17 * narrow, 0.0, 0.665), restR = new THREE.Vector3(0.17 * narrow, 0.0, 0.665);
     L.orient(fwd, up);
-    L.placeWrist(restL.clone().add(below.clone().multiplyScalar(1 - land + leave)));
+    L.placeWrist(restL.clone().add(icApproach(Math.min(1, 1 - land + leave))));
     L.pose(...mixPose(P.repos, P.plate, land));
+    icContact(L, c.obst);
     // la main droite : posée, puis dans le tiroir, puis la toupie au creux de la main, puis vers le lanceur
     const inDrawer = new THREE.Vector3(0.07, -0.06, 0.815), show = new THREE.Vector3(0.05, 0.2, 0.86), toLaunch = new THREE.Vector3(0.02, 0.06, LAUNCH.y + 0.14);
-    let w = restR.clone().add(below.clone().multiplyScalar(1 - land));
-    w = icMix(w, inDrawer, (t - 4.6) / 0.8);
+    let w = restR.clone().add(icApproach(1 - land));
+    // vers le tiroir : d'abord on recule la main au-dessus du tiroir ouvert, puis on descend dedans
+    { const kz = icEase((t - 4.6) / 0.6), ky = icEase((t - 4.95) / 0.45);
+      w.set(w.x + (inDrawer.x - w.x) * kz, w.y + (inDrawer.y - w.y) * ky, w.z + (inDrawer.z - w.z) * kz); }
     w = icMix(w, show, (t - 5.9) / 0.8);
     w = icMix(w, toLaunch, (t - 7.6) / 0.7);
-    w.add(below.clone().multiplyScalar(icEase((t - 8.4) / 0.8)));
+    w.add(icApproach(icEase((t - 8.4) / 0.8)));
     // orientation : à plat → doigts vers le fond du tiroir → paume vers le haut (on regarde la toupie) → à plat au-dessus du lanceur
     const reach = icEase((t - 4.6) / 0.6), palmUp = icEase((t - 5.9) / 0.7) * (1 - icEase((t - 7.6) / 0.5));
     const fd = fwd.clone().lerp(new THREE.Vector3(0, -0.55, -0.83), reach * (1 - palmUp)).lerp(new THREE.Vector3(-0.15, 0.1, -1), palmUp).normalize();
@@ -7365,6 +7426,7 @@ function stepIntroCine(dt) {
     pose = mixPose(pose, [[0.3, 0.42, 0.48, 0.52, 0.58], 0.05], icEase((t - 6.0) / 0.5)); // main en coupe, la toupie au creux
     pose = mixPose(pose, P.attrape, icEase((t - 7.9) / 0.3));
     R.pose(...pose);
+    icContact(R, c.obst);
     // la toupie suit la main droite une fois prise
     if (!c.taken && t > 5.45) {
       c.taken = true; SFX.play('pick');
@@ -8323,7 +8385,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-22.2';
+const VERSION = '2026-11-22.3';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -10001,7 +10063,7 @@ window.__dbg = {
   state, SFX, lbAuth, lbSubmit, lbFetch, startNest, LATE, buildLauncher, launcher, get charging() { return charging; }, setCharging: v => { charging = v; chargeT = v ? 0.5 : 0; }, setTired: v => { TOP_TIRED = v; },
   setQuota: (t, after) => { if (t) QUOTA_TABLE = t; if (after) QUOTA_AFTER = after; }, quotaAt, get QUOTA_TABLE() { return QUOTA_TABLE; }, get nest() { return nest; }, get qte() { return qte; }, qteResolve, endQte, startQte: id => startQte(QTE_PATTERNS.find(p => p.id === id)), setNestK: (k, p, pause, cap, cd) => { if (cap) NEST_HIT_CAP = cap; if (cd) NEST_TOP_CD = cd; NEST_HP_K = k; if (p !== undefined) NEST_PULL = p; if (pause) NEST_PAUSE = pause; }, get S() { return S; }, tops, bugs, update, launchTops, spawnBug, killBug, BUG_TYPES, bugType, webs, mutate, UPGRADES, PERKS, buy, costOf, infestLevel,
   refreshStats, camera, THREE, takePerk, restartRun, get paused() { return paused; }, endWave, makeTopMesh, makeBugMesh, scene, defeat,
-  enterMode, openMenu, isReady, get introStep() { return introStep; }, get introCine() { return introCine; }, get HANDS() { return HANDS; }, startIntro, drawerBox, nextIntroLine, openPause, checkForUpdate,
+  enterMode, openMenu, isReady, get introStep() { return introStep; }, get introCine() { return introCine; }, get HANDS() { return HANDS; }, startIntro, drawerBox, icContact, nextIntroLine, openPause, checkForUpdate,
   upgradeLock, applyToybox, metaBalance, openToybox, rebuildToyDecor, waveQuota, TOYBOX, previewRoot, previewCam,
 };
 </script>

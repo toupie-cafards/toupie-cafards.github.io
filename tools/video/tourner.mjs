@@ -39,7 +39,7 @@ const INIT = `(() => {
         -webkit-text-stroke: calc(var(--s, 64px) * .09) #2a1203; paint-order: stroke fill; text-shadow: 0 .08em .25em rgba(0,0,0,.55);
         opacity: 0; transition: opacity .25s, transform .25s; }
       .vcap.on { opacity: 1; }
-      .vcap .g { background: linear-gradient(#fff2a8, #ffd45a 55%, #f59a1c); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .vcap .g { color: #ffd23f; }
       .vend { position: fixed; inset: 0; z-index: 99998; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh;
         background: radial-gradient(ellipse at center, rgba(30,14,4,.55), rgba(10,4,0,.88)); opacity: 0; transition: opacity .5s; pointer-events: none; }
       .vend.on { opacity: 1; }
