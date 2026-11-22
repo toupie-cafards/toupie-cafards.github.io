@@ -3,7 +3,9 @@
 // Dans setup et action : d = __dbg, s = d.state, r = la partie Histoire, W(ms) = attendre.
 
 const LAUNCH = (x = 0.05, p = 0.95) => `await W(250); d.launchTops(new d.THREE.Vector2(${x}, -1), ${p}, true);`;
-const GO = (ms = 8000) => `d.refreshStats(); d.enterMode('histoire'); await W(${ms});`;
+// Relance la toupie dès qu'elle tombe, pendant tout le plan
+const RELAUNCH = (x = 0.05, p = 1) => `for (let k = 0; k < 12; k++) { for (let i = 0; i < 100 && !d.isReady(); i++) await W(100); await W(150); d.launchTops(new d.THREE.Vector2(${x} + (k % 3 - 1) * 0.15, -1), ${p}, true); await W(400); }`;
+const GO =(ms = 8000) => `d.refreshStats(); d.enterMode('histoire'); await W(${ms});`;
 
 // Niveaux d'atelier pour chaque moment de la partie
 const L_DEBUT = "Object.assign(r.levels, { diametre: 11, endurance: 14, poids: 9, lames: 10, pointe: 6, puissance: 13, elan: 6, appat: 24, nid: 12, combo: 4 });";
@@ -16,9 +18,10 @@ const SCENES = {
   vague1: `r.wave = 1; r.cash = 0; ${GO(5000)}`,
   milieu: `${L_MILIEU} r.wave = 22; r.cash = 2.4e6; r.infest = 4000; ${GO(9000)}`,
   milieuMulti: `${L_MILIEU} r.levels.multi = 2; r.wave = 22; r.cash = 2.4e6; r.infest = 4000; ${GO(9000)}`,
-  atelier: `Object.assign(r.levels, { diametre: 14, endurance: 18, poids: 12, lames: 15, pointe: 9, inertie: 8, rebond: 4, equilibre: 6, critique: 5, puissance: 16, elan: 10, appat: 12, nid: 6 }); r.wave = 14; r.cash = 9e6; d.enterMode('histoire'); await W(2500); document.getElementById('shopBtn').click(); await W(1200);`,
+  atelier: `Object.assign(r.levels, { diametre: 14, endurance: 18, poids: 12, lames: 15, pointe: 9, inertie: 8, rebond: 4, equilibre: 6, critique: 5, puissance: 16, elan: 10, appat: 12, nid: 6 }); r.wave = 14; r.cash = 9e6; d.enterMode('histoire'); await W(2500); document.getElementById('shopBtn').click(); await W(1200); const ti = document.querySelector('.treeIn'); ti.style.transform += ' scale(1.75)'; ti.style.transformOrigin = 'center center'; await W(300);`,
   mutants: `${L_MUTANTS} r.wave = 31; r.cash = 8.7e8; r.toyboxApplied = true; r.infest = 13900; r.stageSeen = 1; ${GO(9000)}`,
   araignees: `${L_FIN} r.infest = 72100; r.stageSeen = 2; r.wave = 43; r.cash = 1.2e9; r.toyboxApplied = true; ${GO(10000)}`,
+  essaim: `${L_FIN.replace('multi: 2, ', '')} r.wave = 22; r.cash = 2.4e6; r.infest = 1600; ${GO(9000)}`,
   vague40: `${L_FIN} r.infest = 72100; r.stageSeen = 2; r.wave = 40; r.cash = 9.8e8; r.toyboxApplied = true; ${GO(10000)}`,
   reine: `d.enterMode('histoire'); await W(2500); document.getElementById('cineSkip')?.click(); await W(1500);
     for (let i = 0; i < 14; i++) { document.getElementById('skipIntro')?.click(); document.getElementById('dialog')?.click(); await W(300); } await W(2500);`,
@@ -50,6 +53,14 @@ export const FILMS = {
       endCard(130, 5),
     ],
   },
+  // Écoute des sons : une toupie seule (souffle, contacts, écrasements), puis trois toupies en pleine foule (pas d'empilement)
+  'test-son': {
+    width: 1280, height: 720,
+    shots: [
+      { name: 'seule', test: 'ts1', setup: SCENES.debut, zoom: 2, action: LAUNCH(), dur: 7, caps: [BOTTOM({ en: 'One top', fr: 'Une toupie' }, 200, 2500)] },
+      { name: 'foule', test: 'ts2', setup: SCENES.milieuMulti, zoom: 1, action: RELAUNCH(0.05, 1), dur: 12, caps: [BOTTOM({ en: 'Three tops in a crowd', fr: 'Trois toupies dans la foule' }, 200, 2500)] },
+    ],
+  },
   // Vidéos courtes verticales (TikTok, Shorts, Reels), 1080×1920
   'short-vagues': {
     width: 1080, height: 1920, zoomZ: -0.05,
@@ -63,7 +74,7 @@ export const FILMS = {
   'short-200': {
     width: 1080, height: 1920, zoomZ: -0.05,
     shots: [
-      { name: 'essaim', test: 's200', setup: SCENES.milieu, zoom: 2, action: LAUNCH(0.05, 1), dur: 11, caps: [TOP({ en: '200 cockroaches<br><span class="g">vs 1 spinning top</span>', fr: '200 cafards<br><span class="g">contre 1 toupie</span>' }, 0, 4500, 84)] },
+      { name: 'essaim', test: 's200', setup: SCENES.essaim, zoom: 2, action: RELAUNCH(0.05, 1), dur: 11, caps: [TOP({ en: '200 cockroaches<br><span class="g">vs 1 spinning top</span>', fr: '200 cafards<br><span class="g">contre 1 toupie</span>' }, 0, 4500, 84)] },
       endCard(120, 3.5),
     ],
   },

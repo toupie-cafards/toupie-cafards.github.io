@@ -575,6 +575,14 @@
   .menuSettings[hidden] { display: none; }
   .menuSettings .pseudoRow { margin: 0 0 10px; }
   .menuSettings .settingsRow { margin: 0 0 6px; }
+  /* Curseurs de volume */
+  .volRows { display: flex; flex-direction: column; gap: 8px; margin: 10px auto 6px; max-width: 340px; }
+  .volRow { display: grid; grid-template-columns: 7.5em 1fr 3.6em; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; color: var(--text); cursor: pointer; }
+  .volRow b { font-weight: 700; font-size: 13px; color: var(--muted); text-align: right; }
+  .volRow input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 99px; outline: none; cursor: pointer;
+    background: linear-gradient(90deg, var(--gold) var(--p, 50%), rgba(255,255,255,.14) var(--p, 50%)); }
+  .volRow input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff4d6; border: 3px solid var(--gold); box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+  .volRow input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff4d6; border: 3px solid var(--gold); }
   #menu .menuNote { font-size: 11.5px; margin-top: 8px; }
   @media (max-height: 640px) { #menu .tag { margin: 4px 0 10px; font-size: 14px; } }
   /* Téléphone à l'horizontale : deux colonnes (titre + JOUER à gauche, le reste à droite) */
@@ -830,7 +838,7 @@
       <div class="menuSettings" id="menuSettings" hidden>
         <div class="pseudoRow"><label for="pseudoInput">👤 Pseudo</label><input id="pseudoInput" maxlength="16" placeholder="Ton pseudo" autocomplete="off"></div>
         <div class="langRow" id="langRow"><button data-lang="fr">Français</button><button data-lang="en">English</button><button data-lang="es">Español</button><button data-lang="de">Deutsch</button></div>
-        <div class="settingsRow"><button class="linkBtn" id="mSoundBtn"></button><button class="linkBtn" id="mMusicBtn"></button></div>
+        <div class="volRows"><label class="volRow"><span>🔊 Effets</span><input type="range" min="0" max="100" step="5" data-vol="sfx"><b></b></label><label class="volRow"><span>🎵 Musique</span><input type="range" min="0" max="100" step="5" data-vol="mus"><b></b></label></div>
         <button class="linkBtn" id="replayIntro">Revoir l’introduction</button>
       </div>
       <div class="menuNote">En cas de défaite, tout repart de zéro : argent, améliorations et infestation.</div>
@@ -855,9 +863,8 @@
       <div class="mt">🚪 Quitter la partie</div>
       <div class="md">Termine la partie et retourne au menu : tu gardes tes 🌊 gagnées, la prochaine partie recommencera à la vague 1.</div>
     </button>
+    <div class="volRows"><label class="volRow"><span>🔊 Effets</span><input type="range" min="0" max="100" step="5" data-vol="sfx"><b></b></label><label class="volRow"><span>🎵 Musique</span><input type="range" min="0" max="100" step="5" data-vol="mus"><b></b></label></div>
     <div class="settingsRow">
-      <button class="linkBtn" id="soundBtn"></button>
-      <button class="linkBtn" id="musicBtn"></button>
       <button class="linkBtn" id="vibBtn"></button>
     </div>
   </div>
@@ -1612,7 +1619,7 @@ const state = {
   mode: 'histoire', introSeen: false,
   tutos: {}, // les petites explications déjà montrées
   achievements: {}, // succès débloqués
-  settings: { sound: true, vibrate: true },
+  settings: { sound: true, vibrate: true, sfxVol: 0.7, musVol: 0.5 },
   maxStage: 0, perfectBest: 0, bestRunMoney: 0, goldenKills: 0,
   pseudo: '',
   nestWins: 0,
@@ -5137,7 +5144,15 @@ let bannerTimer = 0;
 // ---------- Sons : tout est fabriqué à la volée avec Web Audio ----------
 const SON_DIR = 'sons/'; // (à plat pour CrazyGames : le script de build le remplace)
 const SFX = (() => {
-  let ctx = null, master = null, hum = null;
+  let ctx = null, master = null, hum = null, sfxBus = null, musBus = null;
+  // Volumes réglables (0 à 1) : effets et musique. Les anciens réglages activé/coupé comptent encore (coupé = 0).
+  const sfxVol = () => state.settings?.sound === false ? 0 : (state.settings?.sfxVol ?? 0.7);
+  const musVol = () => state.settings?.music === false ? 0 : (state.settings?.musVol ?? 0.5);
+  function setVolumes() {
+    if (!ctx) return;
+    sfxBus.gain.setTargetAtTime(sfxVol() * 1.25, ctx.currentTime, 0.05);
+    musBus.gain.setTargetAtTime(musVol() * 2, ctx.currentTime, 0.05);
+  }
   const last = {};
   // De vrais sons enregistrés (packs Kenney, licence CC0 : voir sons/LICENCE.txt), plusieurs variantes par son.
   // Tant qu'un son n'est pas chargé (ou s'il ne se décode pas), le son de synthèse joue à sa place.
@@ -5159,14 +5174,16 @@ const SFX = (() => {
       }
     }
   }
-  function sample(k, vol, rate = 1) {
+  // hp : on coupe les graves de l'enregistrement (les impacts du pack sont sourds)
+  function sample(k, vol, rate = 1, hp = 0) {
     const l = samples[k];
     if (!l || !l.length) return false;
     const src = ctx.createBufferSource(), g = ctx.createGain();
     src.buffer = l[Math.floor(Math.random() * l.length)];
     src.playbackRate.value = rate;
-    g.gain.value = vol;
-    src.connect(g); g.connect(master);
+    g.gain.value = vol * dens;
+    if (hp) { const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp; f.Q.value = 0.7; src.connect(f); f.connect(g); } else src.connect(g);
+    g.connect(sfxBus);
     src.start();
     return true;
   }
@@ -5177,28 +5194,37 @@ const SFX = (() => {
       master = ctx.createGain();
       master.gain.value = 0.55;
       const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -18; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.004; comp.release.value = 0.2;
       master.connect(comp);
       comp.connect(ctx.destination);
+      // Effets : un peu moins de graves (sinon les écrasements en série deviennent pâteux et sourds)
+      sfxBus = ctx.createGain();
+      const lowCut = ctx.createBiquadFilter(); lowCut.type = 'highpass'; lowCut.frequency.value = 70;
+      const lowShelf = ctx.createBiquadFilter(); lowShelf.type = 'lowshelf'; lowShelf.frequency.value = 180; lowShelf.gain.value = -7;
+      sfxBus.connect(lowCut); lowCut.connect(lowShelf); lowShelf.connect(master);
+      musBus = ctx.createGain(); musBus.connect(master);
+      setVolumes();
       loadSamples();
     } catch { ctx = null; }
   }
-  const on = () => ctx && state.settings?.sound !== false;
+  const on = () => ctx && sfxVol() > 0;
+  let dens = 1; // baisse automatique du volume quand beaucoup de sons du même genre se suivent
   function tone(freq, dur, o = {}) {
-    const { type = 'sine', vol = 0.2, slide = 0, delay = 0, attack = 0.004, out = master, at = 0 } = o;
+    const { type = 'sine', vol = 0.2, slide = 0, delay = 0, attack = 0.004, out = sfxBus, at = 0 } = o;
     const t0 = (at || ctx.currentTime) + delay;
     const osc = ctx.createOscillator(), g = ctx.createGain();
     osc.type = type;
     osc.frequency.setValueAtTime(freq, t0);
     if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t0 + dur);
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol * layer, t0 + attack);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol * layer * (out === sfxBus ? dens : 1)), t0 + attack);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     osc.connect(g); g.connect(out);
     osc.start(t0); osc.stop(t0 + dur + 0.02);
   }
   let noiseBuf = null;
   function noise(dur, o = {}) {
-    const { vol = 0.2, freq = 1500, q = 1, delay = 0, type = 'lowpass', sweep = 0, out = master, at = 0 } = o;
+    const { vol = 0.2, freq = 1500, q = 1, delay = 0, type = 'lowpass', sweep = 0, out = sfxBus, at = 0 } = o;
     if (!noiseBuf) {
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.6, ctx.sampleRate);
       const d = noiseBuf.getChannelData(0);
@@ -5210,7 +5236,7 @@ const SFX = (() => {
     f.type = type; f.Q.value = q;
     f.frequency.setValueAtTime(freq, t0);
     if (sweep) f.frequency.exponentialRampToValueAtTime(freq * sweep, t0 + dur);
-    g.gain.setValueAtTime(vol * layer, t0);
+    g.gain.setValueAtTime(Math.max(0.0002, vol * layer * (out === sfxBus ? dens : 1)), t0);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     src.connect(f); f.connect(g); g.connect(out);
     src.start(t0); src.stop(t0 + dur + 0.02);
@@ -5225,20 +5251,21 @@ const SFX = (() => {
       tone(180 * rp(), 0.32, { type: 'triangle', vol: 0.12, slide: 2.5 + power, delay: 0.16 });
     },
     hit(size) {
-      // « toc » de bois de la toupie qui cogne
+      // petit « tic » de bois, léger : on l'entend sans qu'il fatigue
       const p = rp();
-      tone((900 - 380 * size) * p, 0.05, { type: 'triangle', vol: 0.15, slide: 0.55 });
-      tone((170 - 90 * size) * p, 0.09, { type: 'sine', vol: 0.18, slide: 0.5 });
-      noise(0.035, { vol: 0.1, freq: 2600, type: 'bandpass', q: 3 });
+      tone((1500 - 500 * size) * p, 0.035, { type: 'triangle', vol: 0.09, slide: 0.6 });
+      noise(0.025, { vol: 0.07, freq: 3200 * p, type: 'bandpass', q: 4 });
+      if (size > 0.4) tone((300 - 80 * size) * p, 0.05, { type: 'sine', vol: 0.05, slide: 0.6 });
     },
     crit() { tone(1320, 0.18, { type: 'triangle', vol: 0.16 }); tone(1980, 0.22, { type: 'sine', vol: 0.1, delay: 0.03 }); },
     kill(size) {
-      // « scrountch » : la carapace qui craque puis le corps qui s'écrase
-      const p = rp();
-      noise(0.025, { vol: 0.16 + size * 0.06, freq: 5200 * p, type: 'highpass' });
-      noise(0.14 + size * 0.12, { vol: 0.24 + size * 0.1, freq: (1900 - size * 700) * p, sweep: 0.18, type: 'bandpass', q: 1.6, delay: 0.012 });
-      tone((420 - 200 * size) * p, 0.13, { type: 'square', vol: 0.045, slide: 0.3, delay: 0.01 });
-      if (size > 0.5) tone(70, 0.18, { type: 'sine', vol: 0.18, slide: 0.6, delay: 0.02 });
+      // « crac-plop » : la carapace qui craque, le corps qui s'écrase, et un petit « plop » dont la note monte avec le combo
+      const p = rp(), up = comboPitch();
+      noise(0.018, { vol: 0.13 + size * 0.05, freq: 5200 * p, type: 'highpass' });
+      noise(0.09 + size * 0.1, { vol: 0.16 + size * 0.08, freq: (1600 - size * 600) * p, sweep: 0.2, type: 'bandpass', q: 1.3, delay: 0.008 });
+      tone((760 - 260 * size) * up, 0.075, { type: 'sine', vol: 0.11, slide: 0.42, delay: 0.012 });
+      tone((1520 - 520 * size) * up, 0.05, { type: 'sine', vol: 0.03, slide: 0.5, delay: 0.012 });
+      if (size > 0.75) tone(95, 0.12, { type: 'sine', vol: 0.1, slide: 0.6, delay: 0.015 });
     },
     combo(n) { const st = SCALE[Math.max(0, Math.min(SCALE.length - 1, n - 2))]; tone(523 * Math.pow(2, st / 12), 0.16, { type: 'triangle', vol: 0.13 }); },
     perfect() { [660, 880, 1320].forEach((f, i) => tone(f, 0.2, { type: 'triangle', vol: 0.13, delay: i * 0.06 })); },
@@ -5281,14 +5308,26 @@ const SFX = (() => {
       tone(160, 0.18, { type: 'square', vol: 0.05 * v, slide: 0.6, delay: 0.02 });
     },
   };
-  const MIN_GAP = { coin: 0.07, hit: 0.035, kill: 0.03, crit: 0.06, combo: 0.05, boing: 0.12, zap: 0.06 };
+  const MIN_GAP = { coin: 0.08, hit: 0.055, kill: 0.04, crit: 0.07, combo: 0.06, boing: 0.12, zap: 0.08 };
+  // Quand beaucoup de toupies écrasent tout en même temps : au plus N sons du même genre par 0,3 s, et chacun un peu moins fort
+  const MAX_DENS = { hit: 4, kill: 6, coin: 3, crit: 3, combo: 5, zap: 3 };
+  const recent = {};
+  function crowd(name) {
+    const a = recent[name] || (recent[name] = []), t = ctx.currentTime;
+    while (a.length && t - a[0] > 0.3) a.shift();
+    if (a.length >= MAX_DENS[name]) return 0;
+    a.push(t);
+    return 1 / Math.sqrt(a.length);
+  }
+  // Le « plop » d'écrasement monte d'un cran par insecte du combo (jusqu'à une octave)
+  function comboPitch() { const c = typeof combo === 'number' ? combo : 0; return Math.pow(2, Math.min(12, Math.max(0, c - 1)) / 12 * 0.75); }
   // Le vrai son de chaque effet : il renvoie la part de synthèse gardée par-dessus (0 = aucune), ou false s'il n'est pas prêt
   const REAL = {
-    kill: sz => { const big = sz > 0.5; return sample(big ? 'ecraseGros' : 'ecrase', 0.55 + 0.35 * sz, rp() * (big ? 1.05 - 0.15 * sz : 1.25 - 0.3 * sz)) ? 0.45 : false; },
-    hit: sz => (sample('toc', 0.32 + 0.25 * sz, rp() * (1.25 - 0.35 * sz)) ? 0.3 : false),
+    kill: sz => { const big = sz > 0.5; return sample(big ? 'ecraseGros' : 'ecrase', 0.5 + 0.3 * sz, rp() * (big ? 1.2 - 0.15 * sz : 1.45 - 0.3 * sz), big ? 260 : 420) ? 0.85 : false; },
+    hit: sz => (sample('toc', 0.16 + 0.18 * sz, rp() * (1.4 - 0.35 * sz)) ? 0.5 : false),
     coin: () => (sample('piece', 0.16, 1.45 + Math.random() * 0.35) ? 0 : false),
-    crit: () => (sample('critique', 0.42, rp()) ? 0.5 : false),
-    fall: () => (sample('chute', 0.45, rp()) ? 0.35 : false),
+    crit: () => (sample('critique', 0.42, rp(), 280) ? 0.5 : false),
+    fall: () => (sample('chute', 0.45, rp(), 160) ? 0.35 : false),
     buy: () => (sample('achat', 0.5, rp()) ? 0.45 : false),
     boing: () => (sample('refus', 0.42) ? 0.45 : false),
     pick: () => (sample('choix', 0.55, rp()) ? 0 : false),
@@ -5299,27 +5338,41 @@ const SFX = (() => {
     if (!on()) return;
     const t = ctx.currentTime;
     if (MIN_GAP[name] && t - (last[name] || 0) < MIN_GAP[name]) return;
+    if (MAX_DENS[name]) { dens = crowd(name); if (!dens) { dens = 1; return; } }
     last[name] = t;
     let synth = 1;
     try { if (REAL[name]) { const r = REAL[name](arg); if (r !== false) synth = r; } } catch { /* on garde la synthèse */ }
-    if (synth <= 0) return;
-    layer = synth;
-    try { SOUNDS[name](arg); } catch { /* son impossible : sans gravité */ }
-    layer = 1;
+    if (synth > 0) {
+      layer = synth;
+      try { SOUNDS[name](arg); } catch { /* son impossible : sans gravité */ }
+      layer = 1;
+    }
+    dens = 1;
   }
   window.__sfxSamples = samples; // (tests : quels sons sont chargés)
-  // Ronronnement de la toupie : sa note suit la vitesse de rotation
+  // Ronronnement de la toupie : un souffle d'air aigu et léger, qui « vibre » au rythme de la rotation,
+  // avec un sifflement très doux dont la note baisse quand la toupie ralentit (on entend qu'elle s'essouffle)
   function spin(rpm, ratio) {
-    if (!on() || !rpm) { if (hum) { hum.g.gain.setTargetAtTime(0, ctx.currentTime, 0.08); } return; }
+    if (!on() || !rpm) { if (hum) { hum.g.gain.setTargetAtTime(0, ctx.currentTime, 0.12); } return; }
     if (!hum) {
-      const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
-      o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 600; g.gain.value = 0;
-      o.connect(f); f.connect(g); g.connect(master); o.start();
-      hum = { o, f, g };
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1; bp.frequency.value = 2000;
+      const trem = ctx.createGain(); trem.gain.value = 0.65;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 8; const depth = ctx.createGain(); depth.gain.value = 0.35;
+      lfo.connect(depth); depth.connect(trem.gain);
+      const wh = ctx.createOscillator(); wh.type = 'sine'; wh.frequency.value = 700; const whg = ctx.createGain(); whg.gain.value = 0.045;
+      const g = ctx.createGain(); g.gain.value = 0;
+      src.connect(bp); bp.connect(trem); wh.connect(whg); whg.connect(trem); trem.connect(g); g.connect(sfxBus);
+      src.start(); lfo.start(); wh.start();
+      hum = { g, bp, lfo, wh };
     }
-    hum.o.frequency.setTargetAtTime(55 + Math.min(5000, rpm) / 28, ctx.currentTime, 0.05);
-    hum.f.frequency.setTargetAtTime(300 + 900 * ratio, ctx.currentTime, 0.05);
-    hum.g.gain.setTargetAtTime(0.035 * Math.max(0.2, ratio), ctx.currentTime, 0.05);
+    const r = Math.min(5000, rpm), t = ctx.currentTime;
+    hum.lfo.frequency.setTargetAtTime(5 + r / 380, t, 0.08);
+    hum.bp.frequency.setTargetAtTime(1100 + 1500 * ratio + r * 0.25, t, 0.08);
+    hum.wh.frequency.setTargetAtTime(380 + r * 0.22, t, 0.08);
+    hum.g.gain.setTargetAtTime(0.022 * (0.3 + 0.7 * ratio), t, 0.08);
   }
   // ---------- Musique : composée à la volée (aucun fichier, aucun droit d'auteur) ----------
   // Style lo-fi détente : accords jazzy au piano électrique doux, basse ronde, percussions feutrées avec
@@ -5327,37 +5380,50 @@ const SFX = (() => {
   // Trois ambiances : « menu » (très calme), « jeu » (posé, un peu de rythme), « nid » (plus sombre, toujours doux).
   // La mélodie est tirée au hasard mais rejouée deux fois de suite, puis renouvelée : on reconnaît le thème sans s'en lasser.
   const CHILL = [[57, 60, 64, 67, 71], [53, 57, 60, 64], [48, 52, 55, 59, 62], [55, 59, 62, 64]]; // Am9 · Fmaj7 · Cmaj9 · G6
+  const CHILL2 = [[50, 53, 57, 60, 64], [43, 53, 59, 64], [48, 52, 55, 59, 62], [45, 55, 60, 64]]; // Dm9 · G13 · Cmaj9 · Am7 (ii-V-I-vi)
   const MUS = {
-    menu: { bpm: 70, prog: CHILL, drums: 0, lead: 0.22, vol: 0.9 },
-    jeu: { bpm: 80, prog: CHILL, drums: 1, lead: 0.3, vol: 0.85 },
-    nid: { bpm: 86, prog: [[57, 60, 64, 67], [58, 62, 65, 69], [57, 60, 64, 67], [52, 56, 59, 62]], drums: 1, lead: 0.26, vol: 0.9 }, // Am7 · B♭maj7 · Am7 · E7
+    menu: { bpm: 72, progs: [CHILL, CHILL2], drums: 0, lead: 0.2, vol: 0.9 },
+    jeu: { bpm: 84, progs: [CHILL, CHILL2], drums: 1, lead: 0.3, vol: 0.85 },
+    nid: { bpm: 88, progs: [[[57, 60, 64, 67], [58, 62, 65, 69], [57, 60, 64, 67], [52, 56, 59, 62]]], drums: 1, lead: 0.26, vol: 0.9 }, // Am7 · B♭maj7 · Am7 · E7
   };
   const PENTA = [64, 67, 69, 72, 74, 76, 79];
   const hz = m => 440 * Math.pow(2, (m - 69) / 12);
-  let mus = null;
+  let mus = null, musRev = null;
   function seeded(n) { let x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
-  // Une note de piano électrique : fondamentale douce + une petite harmonique de cloche
+  // Une note de piano électrique (synthèse FM, comme un vieux Rhodes) : attaque un peu « clinquante » qui s'adoucit, plus la petite lame aiguë
   function keys(m, dur, vol, out, at) {
-    tone(hz(m), dur, { type: 'sine', vol, attack: 0.015, out, at });
-    tone(hz(m) * 2.003, dur * 0.45, { type: 'sine', vol: vol * 0.22, attack: 0.01, out, at });
+    const f = hz(m), t0 = at || ctx.currentTime;
+    const car = ctx.createOscillator(), mod = ctx.createOscillator(), mg = ctx.createGain(), g = ctx.createGain();
+    car.frequency.value = f; mod.frequency.value = f;
+    mg.gain.setValueAtTime(f * 1.1, t0); mg.gain.exponentialRampToValueAtTime(f * 0.04, t0 + 0.5);
+    mod.connect(mg); mg.connect(car.frequency);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol * 1.2, t0 + 0.006);
+    g.gain.exponentialRampToValueAtTime(vol * 0.55, t0 + 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    car.connect(g); g.connect(out);
+    car.start(t0); mod.start(t0); car.stop(t0 + dur + 0.05); mod.stop(t0 + dur + 0.05);
+    tone(f * 7.01, 0.18, { type: 'sine', vol: vol * 0.05, attack: 0.002, out, at: t0 });
   }
   function musStep(t, step) {
     const c = MUS[mus.mode], out = mus.gain;
     const s = step % 16, bar = Math.floor(step / 16) % 4, loop = Math.floor(step / 64);
-    const chord = c.prog[bar], root = chord[0], beat = 60 / c.bpm, sx = beat / 4;
+    const prog = c.progs[Math.floor(loop / 2) % c.progs.length]; // une grille d'accords tous les 8 mesures
+    const chord = prog[bar], root = chord[0], beat = 60 / c.bpm, sx = beat / 4;
+    const nextRoot = prog[(bar + 1) % 4][0];
     const swing = s % 4 === 2 ? sx * 0.33 : 0; // les croches « balancent » un peu
     const at = t + swing;
     // Accords : posés au début de la mesure (et rappelés doucement à la moitié en partie)
     if (s === 0) chord.forEach((n, i) => keys(n, beat * 3.6, 0.03, out, t + i * 0.012)); // léger arpège, comme une main sur le clavier
     if (c.drums && s === 10) chord.slice(1).forEach(n => keys(n, beat * 1.4, 0.016, out, at));
-    // Basse ronde
-    if (s === 0) tone(hz(root - 12), beat * 1.9, { type: 'sine', vol: 0.2, attack: 0.02, out, at: t });
-    if (c.drums && s === 10) tone(hz(root - 12 + 7), beat * 1.2, { type: 'sine', vol: 0.13, attack: 0.02, out, at });
-    // Percussions feutrées
+    // Basse ronde (avec une note de passage qui mène à l'accord suivant)
+    const bass = (m, d, v, when) => { tone(hz(m), d, { type: 'sine', vol: v, attack: 0.015, out, at: when }); tone(hz(m) * 2, d * 0.5, { type: 'triangle', vol: v * 0.12, attack: 0.01, out, at: when }); };
+    if (s === 0) bass(root - 12, beat * 1.7, 0.2, t);
+    if (c.drums && s === 10) bass(root - 12 + 7, beat * 1.1, 0.13, at);
+    if (c.drums && s === 14) bass(nextRoot - 12 + (nextRoot > root ? -1 : 1), beat * 0.45, 0.1, at);
+    // Batterie feutrée : grosse caisse ronde, caisse claire « balai » sur les temps 2 et 4, charleston qui balance
     if (c.drums) {
-      if (s === 0 || s === 10) tone(85, 0.22, { type: 'sine', vol: 0.16, slide: 0.55, out, at });
-      if (s === 8) noise(0.05, { vol: 0.035, freq: 2400, type: 'bandpass', q: 5, out, at }); // petit coup de baguette sur le bord
-      if (s % 2 === 0) noise(0.04, { vol: s % 4 === 2 ? 0.014 : 0.009, freq: 7000, type: 'highpass', out, at }); // shaker
+      if (s === 0 || s === 7 || s === 10) { tone(120, 0.2, { type: 'sine', vol: s === 7 ? 0.09 : 0.17, slide: 0.38, out, at }); noise(0.006, { vol: 0.02, freq: 3000, type: 'highpass', out, at }); }
+      if (s === 4 || s === 12) { noise(0.13, { vol: 0.045, freq: 1900, type: 'bandpass', q: 0.8, out, at }); tone(190, 0.06, { type: 'triangle', vol: 0.025, slide: 0.7, out, at }); }
+      if (s % 2 === 0) noise(s === 14 && bar === 3 ? 0.16 : 0.03, { vol: s % 4 === 2 ? 0.018 : 0.01, freq: 8000, type: 'highpass', out, at });
     }
     // Grésillement de vinyle, très discret
     if (seeded(step * 3.7 + loop) < 0.18) noise(0.008, { vol: 0.012, freq: 3500, type: 'highpass', out, at: t + seeded(step) * sx });
@@ -5386,7 +5452,7 @@ const SFX = (() => {
     }
   }
   function music(mode) {
-    const want = ctx && state.settings?.sound !== false && state.settings?.music !== false && document.visibilityState === 'visible';
+    const want = ctx && musVol() > 0 && document.visibilityState === 'visible';
     if (!want) {
       if (mus) { mus.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.15); clearInterval(mus.timer); const g = mus.gain, f = mus.filt; setTimeout(() => { g.disconnect(); f.disconnect(); }, 800); mus = null; }
       return;
@@ -5394,8 +5460,17 @@ const SFX = (() => {
     if (!mus) {
       const gain = ctx.createGain(), filt = ctx.createBiquadFilter();
       gain.gain.value = 0;
-      filt.type = 'lowpass'; filt.frequency.value = 1900; filt.Q.value = 0.5; // son chaud et feutré
-      gain.connect(filt); filt.connect(master);
+      filt.type = 'lowpass'; filt.frequency.value = 2400; filt.Q.value = 0.5; // son chaud et feutré
+      gain.connect(filt); filt.connect(musBus);
+      // Réverbération : un peu d'espace autour des notes (réponse de salle fabriquée, 2,4 s)
+      if (!musRev) {
+        const len = Math.floor(ctx.sampleRate * 2.4), ir = ctx.createBuffer(2, len, ctx.sampleRate);
+        for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+        musRev = ctx.createConvolver(); musRev.buffer = ir;
+        const wet = ctx.createGain(); wet.gain.value = 0.32;
+        musRev.connect(wet); wet.connect(musBus);
+      }
+      filt.connect(musRev);
       mus = { gain, filt, mode, want: mode, step: 0, next: ctx.currentTime + 0.1, timer: setInterval(musTick, 60) };
       gain.gain.setTargetAtTime(0.2 * MUS[mode].vol, ctx.currentTime, 1.2);
     }
@@ -5403,7 +5478,7 @@ const SFX = (() => {
   }
   // Couper / remettre le son (quand l'application passe en arrière-plan)
   function suspend(on) { if (!ctx) return; try { if (on) ctx.suspend(); else ctx.resume(); } catch { /* sans gravité */ } }
-  return { init, play, spin, suspend, music };
+  return { init, play, spin, suspend, music, setVolumes };
 })();
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => SFX.init(), { passive: true }));
 function buzz(ms) {
@@ -7954,12 +8029,27 @@ document.getElementById('loadSave').onclick = () => {
   try { importSave(code); } catch (e) { loadArmed = false; msg.textContent = '❌ ' + e.message; }
 };
 document.getElementById('saveClose').onclick = () => document.getElementById('savePanel').classList.remove('open');
+// Curseurs de volume : effets et musique (0 = coupé)
+function volOf(k) { const st = state.settings; return k === 'sfx' ? (st.sound === false ? 0 : st.sfxVol ?? 0.7) : (st.music === false ? 0 : st.musVol ?? 0.5); }
 function updateMenuSettings() {
-  const sb = document.getElementById('mSoundBtn'), mb = document.getElementById('mMusicBtn');
-  if (!sb) return;
-  sb.textContent = state.settings.sound !== false ? T('🔊 Son : activé') : T('🔇 Son : coupé');
-  mb.textContent = state.settings.music !== false ? T('🎵 Musique : activée') : T('🎵 Musique : coupée');
+  document.querySelectorAll('input[data-vol]').forEach(inp => {
+    const v = Math.round(volOf(inp.dataset.vol) * 100);
+    inp.value = v;
+    inp.style.setProperty('--p', v + '%');
+    inp.nextElementSibling.textContent = v ? v + ' %' : T('coupé');
+  });
 }
+let volBeep = 0;
+document.querySelectorAll('input[data-vol]').forEach(inp => {
+  inp.addEventListener('input', () => {
+    const v = +inp.value / 100, st = state.settings;
+    if (inp.dataset.vol === 'sfx') { st.sfxVol = v; st.sound = true; } else { st.musVol = v; st.music = true; }
+    SFX.init(); SFX.setVolumes();
+    updateMenuSettings();
+    if (inp.dataset.vol === 'sfx' && performance.now() - volBeep > 120) { volBeep = performance.now(); SFX.play('hit', 0.3); }
+  });
+  inp.addEventListener('change', () => save());
+});
 document.getElementById('settingsBtn').onclick = () => {
   const p = document.getElementById('menuSettings'), b = document.getElementById('settingsBtn');
   p.hidden = !p.hidden;
@@ -7967,18 +8057,12 @@ document.getElementById('settingsBtn').onclick = () => {
   updateMenuSettings();
   SFX.init(); SFX.play('pick');
 };
-document.getElementById('mSoundBtn').onclick = () => document.getElementById('soundBtn').click();
-document.getElementById('mMusicBtn').onclick = () => document.getElementById('musicBtn').click();
 document.getElementById('achBtn').onclick = () => { renderAchievements(); document.getElementById('achPanel').classList.add('open'); };
 document.getElementById('achClose').onclick = () => { document.getElementById('achPanel').classList.remove('open'); updateAchCount(); openMenuRefresh(); };
 function updateSettingsBtns() {
-  document.getElementById('soundBtn').textContent = state.settings.sound !== false ? T('🔊 Son : activé') : T('🔇 Son : coupé');
-  document.getElementById('musicBtn').textContent = state.settings.music !== false ? T('🎵 Musique : activée') : T('🎵 Musique : coupée');
   updateMenuSettings();
   document.getElementById('vibBtn').textContent = state.settings.vibrate !== false ? T('📳 Vibrations : activées') : T('📴 Vibrations : coupées');
 }
-document.getElementById('soundBtn').onclick = () => { state.settings.sound = state.settings.sound === false; updateSettingsBtns(); SFX.init(); SFX.play('buy'); save(); };
-document.getElementById('musicBtn').onclick = () => { state.settings.music = state.settings.music === false; updateSettingsBtns(); SFX.init(); save(); };
 document.getElementById('vibBtn').onclick = () => { state.settings.vibrate = state.settings.vibrate === false; updateSettingsBtns(); buzz(30); save(); };
 document.getElementById('toyClose').onclick = () => {
   toyboxEl.classList.remove('open');
@@ -8080,7 +8164,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-21.1';
+const VERSION = '2026-11-22.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
