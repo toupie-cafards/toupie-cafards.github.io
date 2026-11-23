@@ -1025,4 +1025,7 @@ export const I18N = {
 "Atteindre la vague 75.": ["Reach wave 75.","Alcanzar la oleada 75.","Welle 75 erreichen."],
 "☕ Merci à ceux qui soutiennent le jeu :": ["☕ Thanks to those who support the game:","☕ Gracias a quienes apoyan el juego:","☕ Danke an alle, die das Spiel unterstützen:"],
 "Niveau {0}": ["Level {0}","Nivel {0}","Stufe {0}"],
+"SPEEDRUN": ["SPEEDRUN","SPEEDRUN","SPEEDRUN"],
+"RECORD DE VAGUES": ["WAVE RECORD","RÉCORD DE OLEADAS","WELLENREKORD"],
+"À toi de jouer !": ["Your turn!","¡Te toca!","Du bist dran!"],
 };

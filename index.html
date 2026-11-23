@@ -1933,6 +1933,7 @@ function zoomKeeping(zoom, full, clientX, clientY) {
   applyView();
 }
 let lastCamDist = 2;
+let podiums = null; // les deux podiums du classement (voir « LES PODIUMS »)
 function placeCamera() {
   const w = container.clientWidth, h = container.clientHeight;
   if (!w || !h) return;
@@ -1965,6 +1966,7 @@ function placeCamera() {
   lastCamDist = camDist;
   scene.fog.near = camDist + (nest ? 0.25 : 1);
   scene.fog.far = camDist + (nest ? 1.6 : 3.8);
+  placePodiums();
   // Ce cadrage (tout le bureau visible) est la vue la plus large ; on y applique le zoom du joueur
   applyView();
 }
@@ -7579,6 +7581,7 @@ function icObstacles(exclude) {
   const skip = new Set();
   for (const h of [HANDS.left, HANDS.right]) h.root.traverse(o => skip.add(o));
   exclude?.traverse(o => skip.add(o));
+  podiums?.root.traverse(o => skip.add(o));
   const inDrawer = new Set(); drawerBox.traverse(o => inDrawer.add(o));
   const reg = new THREE.Box3(new THREE.Vector3(-0.9, -0.35, 0.05), new THREE.Vector3(0.9, 0.45, 1.3));
   const list = [];
@@ -8120,7 +8123,7 @@ async function lbSubmit(force = false) {
     const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/histoire/${state.lb.uid}.json?auth=${token}`, {
       method: 'PUT', body: JSON.stringify({ pseudo: pseudo.slice(0, 16), wave: best, t: Date.now() }),
     });
-    if (r.ok) { state.lb.sent = best; state.lb.sentPseudo = pseudo; save(); }
+    if (r.ok) { state.lb.sent = best; state.lb.sentPseudo = pseudo; save(); refreshPodiums(true); }
   } catch { /* hors ligne : on réessaiera plus tard */ }
   lbSending = false;
 }
@@ -8135,7 +8138,7 @@ async function lbSubmitSpeed(force = false) {
     const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/speedrun/${state.lb.uid}.json?auth=${token}`, {
       method: 'PUT', body: JSON.stringify({ pseudo: pseudo.slice(0, 16), time: Math.round(best), t: Date.now() }),
     });
-    if (r.ok) { state.lb.sentSpeed = best; state.lb.sentSpeedPseudo = pseudo; save(); }
+    if (r.ok) { state.lb.sentSpeed = best; state.lb.sentSpeedPseudo = pseudo; save(); refreshPodiums(true); }
   } catch { /* hors ligne : on réessaiera plus tard */ }
 }
 async function lbFetchSpeed() {
@@ -8152,6 +8155,338 @@ async function lbFetch() {
   return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: e.pseudo, wave: e.wave, t: e.t }))
     .sort((a, b) => b.wave - a.wave || a.t - b.t);
 }
+// =====================================================================
+//  LES PODIUMS : posés sur le bureau, les trois meilleurs joueurs du monde en speedrun (trois marches et trois toupies)
+//  et en nombre de vagues (trois grandes vagues). Le premier porte une couronne.
+//  En paysage : de chaque côté du plateau. En portrait (pas de place sur les côtés) : sur une tablette, devant le plateau.
+// =====================================================================
+const MEDAL = [0xffc531, 0xd5dde6, 0xd58a4c], MEDAL_CSS = ['#ffc531', '#dbe3ec', '#e09a5c'];
+const PODIUM_KEY = 'toupie-cafards-podiums';
+const PODIUM_PLACE = [0, -0.128, 0.128]; // 1er au milieu, 2e à gauche, 3e à droite
+function fmtPodiumTime(t) {
+  t = Math.max(0, Math.floor(t));
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = String(t % 60).padStart(2, '0');
+  return h ? h + ':' + String(m).padStart(2, '0') + ':' + sec : m + ':' + sec;
+}
+function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+// La plaque : le titre, puis les trois pseudos en gros avec leur score
+function drawPlaque(g, kind, rows) {
+  const W = 1024, H = 560, speed = kind === 'speed', font = '"Segoe UI", system-ui, sans-serif';
+  g.clearRect(0, 0, W, H);
+  const bg = g.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, speed ? '#64161c' : '#0f4a86');
+  bg.addColorStop(1, speed ? '#22060a' : '#061a36');
+  g.fillStyle = bg;
+  g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#f0c04a'; g.lineWidth = 16; g.strokeRect(8, 8, W - 16, H - 16);
+  g.strokeStyle = 'rgba(255,236,170,.45)'; g.lineWidth = 3; g.strokeRect(26, 26, W - 52, H - 52);
+  // Titre, encadré d'un damier (speedrun) ou de vaguelettes
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '900 84px ' + font;
+  const title = speed ? T('SPEEDRUN') : T('RECORD DE VAGUES');
+  let ts = 84;
+  while (g.measureText(title).width > 640 && ts > 50) { ts -= 2; g.font = '900 ' + ts + 'px ' + font; }
+  const tw = g.measureText(title).width;
+  g.lineWidth = 10; g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineJoin = 'round';
+  g.strokeText(title, W / 2, 92);
+  const gold = g.createLinearGradient(0, 50, 0, 130);
+  gold.addColorStop(0, '#fff3c0'); gold.addColorStop(1, '#f5b72e');
+  g.fillStyle = gold;
+  g.fillText(title, W / 2, 92);
+  for (const side of [-1, 1]) {
+    const x0 = W / 2 + side * (tw / 2 + 34);
+    if (speed) for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) { g.fillStyle = (i + j) % 2 ? '#111' : '#fff'; g.fillRect(x0 + (side > 0 ? i : -i - 1) * 22, 59 + j * 22, 22, 22); }
+    else {
+      g.strokeStyle = '#8fe3ff'; g.lineWidth = 11; g.lineCap = 'round';
+      for (const dy of [-18, 14]) { g.beginPath(); for (let i = 0; i <= 24; i++) { const x = x0 + side * i * 4.2, y = 92 + dy + Math.sin(i * 0.52) * 11; if (i) g.lineTo(x, y); else g.moveTo(x, y); } g.stroke(); }
+    }
+  }
+  // Les trois rangs
+  for (let i = 0; i < 3; i++) {
+    const e = rows[i], y = 212 + i * 125;
+    g.fillStyle = i === 0 ? 'rgba(255, 205, 70, .24)' : 'rgba(255,255,255,.07)';
+    roundRect(g, 44, y - 54, W - 88, 108, 26); g.fill();
+    if (i === 0) { g.strokeStyle = 'rgba(255, 214, 90, .8)'; g.lineWidth = 4; g.stroke(); }
+    g.fillStyle = MEDAL_CSS[i];
+    g.beginPath(); g.arc(108, y, 43, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 5; g.stroke();
+    g.fillStyle = '#3b2414'; g.textAlign = 'center'; g.font = '900 60px ' + font;
+    g.fillText(String(i + 1), 108, y + 3);
+    const score = !e ? '' : speed ? fmtPodiumTime(e.time) : String(e.wave);
+    g.textAlign = 'right'; g.font = '800 68px ' + font; g.fillStyle = '#ffe9a8';
+    g.fillText(score, W - 70, y + 3, 260);
+    const room = W - 70 - Math.min(260, g.measureText(score).width) - 30 - 176;
+    const name = e ? e.pseudo : i === 0 ? T('À toi de jouer !') : '…';
+    let fs = 88;
+    g.textAlign = 'left'; g.font = '800 ' + fs + 'px ' + font;
+    while (g.measureText(name).width > room && fs > 50) { fs -= 2; g.font = '800 ' + fs + 'px ' + font; }
+    g.lineWidth = 9; g.strokeStyle = 'rgba(0,0,0,.55)';
+    g.strokeText(name, 176, y + 3, room);
+    g.fillStyle = e && e.uid === state.lb?.uid ? '#8df59b' : i === 0 ? '#ffd95e' : '#ffffff';
+    g.fillText(name, 176, y + 3, room);
+  }
+}
+function podiumNumberTex(n) {
+  return canvasTex(128, 128, (g, w, h) => {
+    const grd = g.createRadialGradient(50, 44, 8, 64, 64, 64);
+    grd.addColorStop(0, '#fff7d8'); grd.addColorStop(0.5, MEDAL_CSS[n - 1]); grd.addColorStop(1, ['#a86a08', '#7c8794', '#7c4318'][n - 1]);
+    g.fillStyle = grd; g.beginPath(); g.arc(64, 64, 62, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(60,30,8,.55)'; g.lineWidth = 5; g.beginPath(); g.arc(64, 64, 50, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = '#3b2414'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '900 78px "Segoe UI", system-ui, sans-serif';
+    g.fillText(String(n), 64, 69);
+  });
+}
+function buildCrown() {
+  const g = new THREE.Group();
+  const gold = new THREE.MeshStandardMaterial({ color: 0xffc934, roughness: 0.18, metalness: 0.95, emissive: 0x6a3d00, emissiveIntensity: 0.5, side: THREE.DoubleSide });
+  const gems = [0xe23b4e, 0x3aa0ff, 0x44d66a].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.1, metalness: 0.2, emissive: c, emissiveIntensity: 0.45 }));
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+  add(new THREE.CylinderGeometry(0.036, 0.031, 0.02, 28, 1, true), gold, 0, 0, 0);
+  for (const [r, y] of [[0.0315, -0.01], [0.036, 0.0095]]) add(new THREE.TorusGeometry(r, 0.0026, 8, 32), gold, 0, y, 0).rotation.x = Math.PI / 2;
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2, big = i % 2 === 0, h = big ? 0.034 : 0.022;
+    add(new THREE.ConeGeometry(0.0085, h, 5), gold, Math.cos(a) * 0.0355, 0.0095 + h / 2, Math.sin(a) * 0.0355);
+    add(new THREE.SphereGeometry(big ? 0.0052 : 0.0036, 10, 8), big ? gems[(i / 2) % 3] : gold, Math.cos(a) * 0.0355, 0.0105 + h, Math.sin(a) * 0.0355);
+    add(new THREE.SphereGeometry(0.0046, 10, 8), gems[(i + 1) % 3], Math.cos(a + 0.39) * 0.0345, 0, Math.sin(a + 0.39) * 0.0345);
+  }
+  add(new THREE.SphereGeometry(0.027, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xa01f3a, roughness: 0.8 }), 0, -0.004, 0).scale.y = 0.8;
+  g.userData.sparks = [];
+  for (let i = 0; i < 4; i++) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: sparkTex, color: 0xfff0b0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+    g.add(sp);
+    g.userData.sparks.push(sp);
+  }
+  return g;
+}
+// Une grande vague qui déferle (hauteur 1, largeur 1) : dos bleu nuit, creux turquoise, crête d'écume
+let waveGeoCache = null;
+function waveGeometry() {
+  if (waveGeoCache) return waveGeoCache;
+  const sh = new THREE.Shape();
+  sh.moveTo(-0.52, 0);
+  sh.bezierCurveTo(-0.47, 0.5, -0.25, 0.97, 0.1, 1);
+  sh.bezierCurveTo(0.42, 1.02, 0.6, 0.72, 0.42, 0.52);
+  sh.bezierCurveTo(0.42, 0.74, 0.12, 0.8, 0.06, 0.52);
+  sh.bezierCurveTo(0.02, 0.26, 0.2, 0.06, 0.52, 0);
+  sh.closePath();
+  const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.62, bevelEnabled: true, bevelSize: 0.035, bevelThickness: 0.05, bevelSegments: 3, curveSegments: 18 });
+  geo.translate(0, 0, -0.31);
+  const p = geo.attributes.position, col = new Float32Array(p.count * 3), a = new THREE.Color(0x0b3f96), b = new THREE.Color(0x22b7e6), c = new THREE.Color();
+  for (let i = 0; i < p.count; i++) {
+    c.copy(a).lerp(b, Math.max(0, Math.min(1, p.getY(i) * 0.75 + p.getX(i) * 0.45 + 0.12)));
+    c.toArray(col, i * 3);
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return (waveGeoCache = geo);
+}
+function buildWave(w, h, d) {
+  const g = new THREE.Group();
+  const water = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.16, metalness: 0.1, emissive: 0x0a3f78, emissiveIntensity: 0.3 });
+  const foam = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.75, emissive: 0x9fd8ee, emissiveIntensity: 0.35 });
+  const m = new THREE.Mesh(waveGeometry(), water);
+  m.castShadow = m.receiveShadow = true;
+  g.add(m);
+  // L'écume, en grosses bulles le long de la crête, et deux traits blancs sur la face avant
+  const crest = new THREE.CatmullRomCurve3([[-0.06, 0.97], [0.12, 1.02], [0.32, 0.98], [0.46, 0.85], [0.5, 0.7], [0.43, 0.53]].map(([x, y]) => new THREE.Vector3(x, y, 0)));
+  const ball = new THREE.SphereGeometry(1, 10, 8), q = new THREE.Vector3(), M = new THREE.Matrix4(), list = [];
+  for (let i = 0; i <= 10; i++) {
+    crest.getPoint(i / 10, q);
+    const r0 = 0.05 + 0.05 * Math.pow(i / 10, 1.1);
+    for (let j = 0; j < 6; j++) {
+      const n = Math.abs(Math.sin(i * 12.9898 + j * 78.233) * 43758.5453) % 1, n2 = Math.abs(Math.sin(i * 39.3 + j * 11.1) * 24634.6) % 1;
+      list.push([q.x + (n2 - 0.5) * 0.07, q.y + (n - 0.5) * 0.05, -0.32 + (j + n * 0.6) * 0.115, r0 * (0.62 + 0.65 * n2)]);
+    }
+  }
+  for (const [x, y, z, r] of [[0.46, 0.03, 0.2, 0.09], [0.5, 0.03, -0.1, 0.08], [0.36, 0.04, 0.36, 0.07], [-0.5, 0.02, 0.3, 0.07], [-0.46, 0.02, 0.36, 0.05]]) list.push([x, y, z, r]);
+  const inst = new THREE.InstancedMesh(ball, foam, list.length);
+  list.forEach(([x, y, z, r], i) => inst.setMatrixAt(i, M.makeScale(r * h / w, r, r * h / d).setPosition(x, y, z)));
+  inst.castShadow = true;
+  g.add(inst);
+  for (const pts of [[[-0.38, 0.1], [-0.3, 0.46], [-0.1, 0.74], [0.16, 0.86], [0.36, 0.78]], [[-0.24, 0.1], [-0.18, 0.4], [-0.04, 0.6]]]) {
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(([x, y]) => new THREE.Vector3(x, y, 0.36))), 20, 0.016, 6), foam);
+    g.add(tube);
+  }
+  g.scale.set(w, h, d);
+  return g;
+}
+function buildPodium(kind) {
+  const speed = kind === 'speed';
+  const g = new THREE.Group(), anim = { tops: [], waves: [], crown: null, kind };
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xf2bb3c, roughness: 0.25, metalness: 0.9, emissive: 0x4a2c00, emissiveIntensity: 0.4 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2a160c, roughness: 0.35 });
+  const box = (w, h, d, mat, x, y, z) => addMesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z, g);
+  // Le socle
+  box(0.416, 0.016, 0.31, dark, 0, 0.008, 0.02);
+  box(0.424, 0.005, 0.318, goldMat, 0, 0.0025, 0.02);
+  if (!speed) { // l'eau, posée sur le socle
+    const sea = box(0.4, 0.014, 0.145, new THREE.MeshStandardMaterial({ color: 0x1480c8, roughness: 0.1, metalness: 0.15, emissive: 0x0a4a80, emissiveIntensity: 0.4 }), 0, 0.022, -0.058);
+    sea.castShadow = false;
+  }
+  for (let i = 0; i < 3; i++) {
+    const x = PODIUM_PLACE[i], z = -0.06;
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(speed ? 0.026 : 0.021, 32), new THREE.MeshStandardMaterial({ map: podiumNumberTex(i + 1), transparent: true, roughness: 0.4, emissive: 0xffffff, emissiveMap: podiumNumberTex(i + 1), emissiveIntensity: 0.35 }));
+    if (speed) {
+      const h = [0.15, 0.108, 0.08][i];
+      box(0.124, h, 0.112, new THREE.MeshStandardMaterial({ color: [0xb3222c, 0x9a1d27, 0x841821][i], roughness: 0.35, envMapIntensity: 0.8 }), x, 0.016 + h / 2, z);
+      box(0.13, 0.008, 0.118, goldMat, x, 0.016 + h, z);
+      disc.position.set(x, 0.016 + h - 0.036, z + 0.0575);
+      g.add(disc);
+      // La toupie en or, en argent ou en bronze
+      const top = new THREE.Group(), spin = new THREE.Group();
+      const met = new THREE.MeshStandardMaterial({ color: MEDAL[i], roughness: 0.2, metalness: 0.95, emissive: MEDAL[i], emissiveIntensity: 0.16 });
+      const body = new THREE.Mesh(bodyGeo, met), tip = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.3, 14), met), stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 0.5, 12), met);
+      tip.rotation.x = Math.PI; tip.position.y = 0.06; stem.position.y = 0.88;
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.98, 0.07, 8, 36), new THREE.MeshStandardMaterial({ color: 0xffffff, map: stripeTexture(['#d8222e', '#ffffff'], 'podium'), roughness: 0.4 }));
+      band.rotation.x = Math.PI / 2; band.position.y = 0.45;
+      for (const m of [body, tip, stem, band]) { m.castShadow = true; spin.add(m); }
+      top.add(spin);
+      const k = [0.05, 0.043, 0.038][i];
+      top.scale.setScalar(k);
+      top.position.set(x, 0.022 + h, z);
+      g.add(top);
+      anim.tops.push({ top, spin, i, h: 0.022 + h + k * 1.15 });
+    } else {
+      const h = [0.205, 0.15, 0.112][i], w = [0.15, 0.132, 0.124][i];
+      const wv = buildWave(w, h, 0.15);
+      wv.position.set(x + [0, 0.004, -0.002][i], 0.024, z - [0.006, 0, 0][i]);
+      g.add(wv);
+      disc.position.set(x - w * 0.14, 0.05, z + 0.078 + 0.004);
+      disc.rotation.x = -0.45;
+      disc.renderOrder = 2;
+      g.add(disc);
+      anim.waves.push({ wv, i, y: 0.024, h });
+    }
+  }
+  // La couronne du numéro 1, qui flotte au-dessus
+  const crown = buildCrown();
+  anim.crownY = speed ? anim.tops[0].h + 0.006 : 0.024 + 0.205 + 0.012;
+  crown.position.set(speed ? 0 : 0.014, anim.crownY, -0.075);
+  crown.scale.setScalar(speed ? 1.05 : 1.15);
+  g.add(crown);
+  anim.crown = crown;
+  // La plaque avec les pseudos, inclinée vers le joueur
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 560;
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  const pl = new THREE.Group();
+  const slab = addMesh(new THREE.BoxGeometry(0.416, 0.01, 0.236), dark, 0, -0.006, 0, pl);
+  slab.castShadow = true;
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.41, 0.41 * 560 / 1024), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0, envMapIntensity: 0.15, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.42 }));
+  face.rotation.x = -Math.PI / 2;
+  face.position.y = 0.0005;
+  pl.add(face);
+  pl.rotation.x = 0.42;
+  pl.position.set(0, 0.062, 0.118);
+  g.add(pl);
+  g.userData.anim = anim;
+  g.userData.draw = rows => { drawPlaque(c.getContext('2d'), kind, rows); tex.needsUpdate = true; };
+  g.userData.draw([]);
+  return g;
+}
+function buildPodiums() {
+  const root = new THREE.Group();
+  podiums = { root, speed: buildPodium('speed'), wave: buildPodium('wave'), t: 0, lastFetch: 0 };
+  // La tablette (en portrait seulement)
+  const tray = new THREE.Group();
+  addMesh(new THREE.BoxGeometry(1.3, 0.03, 0.56), tableMat, 0, -0.015, 0, tray);
+  addMesh(new THREE.BoxGeometry(1.31, 0.034, 0.016), new THREE.MeshStandardMaterial({ color: 0x5b3a1e, roughness: 0.6 }), 0, -0.015, 0.284, tray);
+  podiums.tray = tray;
+  root.add(podiums.speed, podiums.wave, tray);
+  scene.add(root);
+  try { const old = JSON.parse(STORE.getItem(PODIUM_KEY) || 'null'); if (old) showPodiums(old); } catch { /* stockage bloqué */ }
+  placePodiums();
+  setTimeout(() => refreshPodiums(), 2500);
+}
+function placePodiums() {
+  if (!podiums) return;
+  const v = new THREE.Vector3(), W = container.clientWidth, H = container.clientHeight;
+  const proj = (x, y, z) => v.set(x, y, z).project(camera);
+  // Le bord de l'écran, en mètres, à la profondeur z (au niveau de la table)
+  const edge = z => { const a = proj(0.7, TABLE_Y, z).x, b = proj(1.1, TABLE_Y, z).x; return 0.7 + (1 - a) * 0.4 / (b - a); };
+  const hud = document.getElementById('hud'), hudB = hud.classList.contains('tuto-objectif') ? podiums.hudB || 0 : hud.getBoundingClientRect().bottom;
+  podiums.hudB = hudB;
+  // Sur les côtés : là où la plaque paraît la plus grande, sans passer sous le cadre du score (en haut à gauche)
+  let best = null;
+  for (let z = -0.3; z <= 0.36; z += 0.02) {
+    const e = edge(z + 0.2) - 0.018, k = Math.min(1, (Math.min(e, 1.17) - 0.738) / 0.432);
+    const y = (1 - proj(-0.95, TABLE_Y + 0.3 * k, z - 0.1 * k).y) / 2 * H;
+    if ((y > hudB + 4 || z > 0.35) && (!best || k / e > best.k / best.e)) best = { z, k, e };
+  }
+  const side = best && best.k > 0.58;
+  podiums.side = side;
+  podiums.tray.visible = !side;
+  books.visible = true;
+  for (const p of [podiums.speed, podiums.wave]) p.userData.anim.lift = side ? 0.018 : 0.05; // couronne : plus haute vue de dessus
+  if (side) {
+    const x = 0.738 + 0.214 * best.k;
+    for (const [p, sx] of [[podiums.speed, -1], [podiums.wave, 1]]) { p.scale.setScalar(best.k); p.position.set(sx * x, TABLE_Y, best.z); p.rotation.y = 0; }
+  } else {
+    // Devant le plateau, aussi grand que possible sans sortir de l'écran (le message du bas reste lisible sur téléphone)
+    const low = -1 + (innerWidth <= 700 ? 58 : 24) / H * 2;
+    let k = 1.45;
+    const z = () => 0.69 + 0.1 * k;
+    while (k > 0.45 && (proj(0, TABLE_Y, z() + 0.235 * k).y < low || edge(z() + 0.2 * k) < 0.45 * k)) k -= 0.03;
+    const front = k > 0.45;
+    podiums.tray.visible = front;
+    if (!front) k = 0.74; // écran presque carré : au fond du bureau (à la place des livres)
+    books.visible = front;
+    podiums.tray.position.set(0, TABLE_Y - 0.004, z() + 0.065 * k);
+    podiums.tray.scale.set((0.9 * k + 0.12) / 1.3, 1, (0.33 * k + 0.05) / 0.56);
+    for (const [p, sx] of [[podiums.speed, -1], [podiums.wave, 1]]) { p.scale.setScalar(k); p.position.set(sx * (front ? 0.219 * k : 0.56), TABLE_Y, front ? z() : -1.07); p.rotation.y = 0; }
+  }
+}
+function stepPodiums(dt) {
+  if (!podiums) return;
+  podiums.root.visible = !nest && !introCine && !cine;
+  if (!podiums.root.visible) return;
+  const t = (podiums.t += dt);
+  if ((podiums.chk = (podiums.chk || 0) + dt) > 1.5) { // le cadre du score a grandi ou rétréci
+    podiums.chk = 0;
+    const h = document.getElementById('hud');
+    if (!h.classList.contains('tuto-objectif') && Math.abs(h.getBoundingClientRect().bottom - (podiums.hudB || 0)) > 6 && view.zoom === 1) placePodiums();
+  }
+  for (const g of [podiums.speed, podiums.wave]) {
+    const a = g.userData.anim;
+    for (const o of a.tops) {
+      o.spin.rotation.y = t * (9 - o.i * 2);
+      const wob = 0.06 + 0.05 * o.i;
+      o.top.rotation.set(Math.cos(t * (3 - o.i * 0.5)) * wob, 0, Math.sin(t * (3 - o.i * 0.5)) * wob);
+    }
+    for (const o of a.waves) {
+      o.wv.position.y = o.y + Math.sin(t * 1.6 + o.i * 2) * 0.003 - 0.002;
+      o.wv.rotation.z = Math.sin(t * 1.3 + o.i * 1.7) * 0.035;
+    }
+    a.crown.position.y = a.crownY + (a.lift || 0) + Math.sin(t * 2.2) * 0.005;
+    a.crown.rotation.y = t * 0.9;
+    a.crown.userData.sparks.forEach((sp, i) => {
+      const k = (t * 0.55 + i * 0.25) % 1, n = Math.floor(t * 0.55 + i * 0.25), an = n * 2.4 + i * 1.7;
+      sp.position.set(Math.cos(an) * 0.042, 0.004 + ((n * 37 + i * 17) % 10) * 0.004, Math.sin(an) * 0.042);
+      sp.scale.setScalar(0.034 * Math.sin(k * Math.PI));
+      sp.material.opacity = Math.sin(k * Math.PI);
+    });
+  }
+}
+function showPodiums(data) {
+  podiums?.speed.userData.draw(data.speed || []);
+  podiums?.wave.userData.draw(data.wave || []);
+}
+// Les trois premiers de chaque classement (relus au lancement, puis toutes les 5 minutes, et quand on bat son record)
+async function refreshPodiums(now = false) {
+  if (!podiums || !lbReady()) return;
+  if (!now && Date.now() - podiums.lastFetch < 60000) return;
+  podiums.lastFetch = Date.now();
+  try {
+    const get = async q => { const r = await fetch(LB_CONFIG.dbURL + '/leaderboard/' + q); if (!r.ok) throw 0; return Object.entries((await r.json()) || {}).map(([uid, e]) => ({ uid, ...e, pseudo: String(e.pseudo || '???').slice(0, 16) })); };
+    const [sp, wv] = await Promise.all([get('speedrun.json?orderBy=%22time%22&limitToFirst=6'), get('histoire.json?orderBy=%22wave%22&limitToLast=6')]);
+    const data = { speed: sp.sort((a, b) => a.time - b.time || a.t - b.t).slice(0, 3), wave: wv.sort((a, b) => b.wave - a.wave || a.t - b.t).slice(0, 3) };
+    showPodiums(data);
+    try { STORE.setItem(PODIUM_KEY, JSON.stringify(data)); } catch { /* stockage bloqué */ }
+  } catch { /* hors ligne : on garde le dernier podium connu */ }
+}
+setInterval(() => { if (!document.hidden) refreshPodiums(); }, 300000);
+buildPodiums();
 let lbKind = 'wave';
 async function openLeaderboard(kind = lbKind) {
   lbKind = typeof kind === 'string' ? kind : lbKind;
@@ -8664,7 +8999,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-23.2';
+const VERSION = '2026-11-23.3';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -9955,6 +10290,7 @@ function frame(now) {
   updateCoach();
   if (introTop) animateIntroTop(dt);
   animateSteam(dt);
+  stepPodiums(dt);
   if (autoBtn) {
     const on = state.autoOn;
     autoBtn.cap.material.color.setHex(on ? 0x3ad35a : 0xd83a3a);
@@ -10351,7 +10687,7 @@ window.__dbg = {
   setQuota: (t, after) => { if (t) QUOTA_TABLE = t; if (after) QUOTA_AFTER = after; }, quotaAt, get QUOTA_TABLE() { return QUOTA_TABLE; }, get nest() { return nest; }, get qte() { return qte; }, qteResolve, endQte, startQte: id => startQte(QTE_PATTERNS.find(p => p.id === id)), setNestK: (k, p, pause, cap, cd) => { if (cap) NEST_HIT_CAP = cap; if (cd) NEST_TOP_CD = cd; NEST_HP_K = k; if (p !== undefined) NEST_PULL = p; if (pause) NEST_PAUSE = pause; }, get S() { return S; }, tops, bugs, update, launchTops, spawnBug, killBug, BUG_TYPES, bugType, webs, mutate, UPGRADES, PERKS, buy, costOf, infestLevel,
   refreshStats, camera, THREE, takePerk, restartRun, get paused() { return paused; }, endWave, makeTopMesh, makeBugMesh, scene, defeat,
   enterMode, openMenu, isReady, get introStep() { return introStep; }, get introCine() { return introCine; }, get HANDS() { return HANDS; }, startIntro, drawerBox, icContact, nextIntroLine, openPause, checkForUpdate,
-  waveSpecial, SPECIALS, specialText, spawnChief, refillBoard, startWave, setChief: (h, sh) => { CHIEF_HITS = h; if (sh) CHIEF_SHARE = sh; }, openCredits,
+  get podiums() { return podiums; }, refreshPodiums, showPodiums, waveSpecial, SPECIALS, specialText, spawnChief, refillBoard, startWave, setChief: (h, sh) => { CHIEF_HITS = h; if (sh) CHIEF_SHARE = sh; }, openCredits,
   upgradeLock, applyToybox, metaBalance, openToybox, rebuildToyDecor, waveQuota, TOYBOX, previewRoot, previewCam,
 };
 </script>
