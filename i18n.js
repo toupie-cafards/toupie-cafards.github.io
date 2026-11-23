@@ -1012,6 +1012,7 @@ export const I18N = {
 "La Mygale monstrueuse": ["The Monstrous Tarantula","La Tarántula monstruosa","Die Monstervogelspinne"],
 "La Grande Tisseuse": ["The Great Weaver","La Gran Tejedora","Die Große Weberin"],
 "Un chef ! Le battre compte pour {0} insectes et rapporte 5 🌊, un coffre plein d’argent et un bonus de plus.": ["A boss! Beating it counts as {0} bugs and earns 5 🌊, a chest full of money and an extra bonus.","¡Un jefe! Vencerlo cuenta como {0} insectos y da 5 🌊, un cofre lleno de dinero y un bonus extra.","Ein Boss! Ihn zu besiegen zählt wie {0} Insekten und bringt 5 🌊, eine Truhe voller Geld und einen Extra-Bonus."],
+"🧪 Session de test : vague {0}, un chef t’attend. Ta vraie sauvegarde n’est pas touchée.": ["🧪 Test session: wave {0}, a boss awaits you. Your real save is untouched.","🧪 Sesión de prueba: oleada {0}, te espera un jefe. Tu partida real no se toca.","🧪 Testsitzung: Welle {0}, ein Boss erwartet dich. Dein echter Spielstand bleibt unberührt."],
 "👑 Bonus du chef !": ["👑 Boss bonus!","👑 ¡Bonus del jefe!","👑 Boss-Bonus!"],
 "Tu as vaincu le chef : choisis un bonus de plus.": ["You beat the boss: pick an extra bonus.","Has vencido al jefe: elige un bonus extra.","Du hast den Boss besiegt: Wähle einen Extra-Bonus."],
 "👑 puis le bonus du chef": ["👑 then the boss bonus","👑 después, el bonus del jefe","👑 danach der Boss-Bonus"],

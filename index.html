@@ -6156,7 +6156,7 @@ function stepChest(dt) {
   g.userData.lid.rotation.x = -1.9 * (1 - (1 - k) * (1 - k));
   if (k > 0 && !chest.open) {
     chest.open = true;
-    popup(T('💰 Coffre du chef ! +') + fmtMoney(chest.amount), chest.x, chest.z + 0.28, 'big');
+    popup(T('💰 Coffre du chef ! +') + fmtMoney(chest.amount), chest.x, chest.z + (chest.z > 0 ? -0.4 : 0.28), 'big');
     SFX.play('achieve');
     burst(chest.x, chest.z, 26, 0xffd040, 0.06);
     coinFly(chest.x, chest.z, 14);
@@ -9183,7 +9183,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-23.6';
+const VERSION = '2026-11-23.7';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -10817,7 +10817,7 @@ if (TEST_MODE === 'riche') {
   run.launchesLeft = waveLaunches();
   document.querySelector('#menu .tag').textContent = T('🧪 Session de test : vague 1, toupie et lanceur au niveau 1, toutes les améliorations débloquées et 900 milliards en poche. Ta vraie sauvegarde n’est pas touchée.');
 }
-if (TEST_MODE === 'nid' || TEST_MODE === 'boss') {
+if (TEST_MODE === 'nid' || TEST_MODE === 'boss' || TEST_MODE === 'chef') {
   const run = state.savedRuns.histoire = newRun('histoire');
   state.mode = 'histoire';
   state.run = run;
@@ -10838,6 +10838,14 @@ if (TEST_MODE === 'nid' || TEST_MODE === 'boss') {
   refreshStats();
   run.launchesLeft = waveLaunches();
   document.querySelector('#menu .tag').textContent = T('🧪 Session de test : fin de partie, 1,2 milliard en poche. Ta vraie sauvegarde n’est pas touchée.');
+  // ?test=chef : directement face à un chef (&vague=50, 55, 60 ou 65)
+  if (TEST_MODE === 'chef') {
+    run.wave = Math.max(50, Math.round(Number(new URLSearchParams(location.search).get('vague')) / 5) * 5 || 50);
+    run.infest = 168000;
+    run.launchAvg = 118e6;
+    startWave();
+    document.querySelector('#menu .tag').textContent = T('🧪 Session de test : vague {0}, un chef t’attend. Ta vraie sauvegarde n’est pas touchée.', run.wave);
+  }
 }
 // Session de test « vague 50, tout au max » (?test=max) : toutes les améliorations, cartes et objets du Carton au maximum
 if (TEST_MODE === 'max') {
