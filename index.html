@@ -1509,6 +1509,60 @@ const UPGRADES = [
 ];
 
 // =====================================================================
+//  FILTRE DES PSEUDOS
+// =====================================================================
+// Pseudos insultants : remplacés par des étoiles partout où on les affiche (classements, podiums, défis).
+// Le texte est d'abord simplifié (accents, « l33t », lettres répétées, séparateurs), pour ne pas se faire contourner.
+// BAD_IN : mots repérés n'importe où dans le pseudo ; BAD_WORD : mots trop courts, seulement s'ils sont entiers
+// (sinon « Hercule », « Nazim », « député » ou « Yoshito » seraient censurés).
+const BAD_IN = ('encule connard connase conasse salope salopard batard filsdepute putedemere niquetamere niquetarace niktamer niktarace nikmouk tagueule tamere '
+  + 'bougnoul youpin negre bamboula pedophile pedofil hitler daesh tarlouze tafiole enfoire sucemabite grossebite grosebite suceurdebite branleur couile '
+  + 'fuck nigger nigga niga fagot bitch whore motherfuc cocksuck asshole dickhead jerkoff retarded cumshot pornhub blowjob '
+  + 'hijodeputa gilipollas cabron maricon mierda chupapija chupala '
+  + 'hurensohn arschloch arschgesicht wichser schlampe missgeburt fotze heilhitler').split(' ');
+const BAD_WORD = ('pute putes putain puta puto con conne cons cul bite bites nique niquer ntm fdp pd pede gouine chienne merde viol violeur violer nazi nazis kkk penis vagin sexe porno porn '
+  + 'ass arse shit cunt dick cock slut rape rapist fag fags tits cum coño polla culo zorra scheisse scheise ficken fick hure schwuchtel neger negro negre').split(' ');
+let badLists = null;
+function cleanName(name) {
+  const src = [...String(name || '')];
+  const LEET = { 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', 8: 'b', '@': 'a', '$': 's', '!': 'i', '€': 'e', '|': 'i' };
+  const flat = w => w.replace(/(.)\1+/g, '$1');
+  const norm = c => c.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  badLists ||= { in: BAD_IN.map(flat), word: new Set(BAD_WORD.map(w => flat([...w].map(norm).join('')))) };
+  // Les lettres utiles, avec leur place dans le pseudo (les répétitions ne comptent qu'une fois)
+  const read = leet => {
+    const out = [];
+    src.forEach((c, i) => {
+      const n = norm(c), l = (leet && LEET[n]) || n;
+      if (!/^[a-z]$/.test(l)) return;
+      const last = out[out.length - 1];
+      if (last && last.l === l) { last.to = i; return; }
+      out.push({ l, i, to: i });
+    });
+    return out;
+  };
+  const hide = new Set(), mark = (a, b) => { for (let k = a; k <= b; k++) if (src[k] !== ' ') hide.add(k); };
+  for (const leet of [false, true]) {
+    const L = read(leet), txt = L.map(o => o.l).join('');
+    for (const w of badLists.in) for (let p = txt.indexOf(w); p >= 0; p = txt.indexOf(w, p + 1)) if (!(w === 'niger' || w === 'fagot') || L[p + 2].to > L[p + 2].i) mark(L[p].i, L[p + w.length - 1].to);
+    // Mots entiers : entre espaces, tirets, points…, entre deux majuscules (SalePute), ou tout le pseudo sans ses chiffres
+    if (badLists.word.has(txt)) mark(0, src.length - 1);
+    let start = 0;
+    const word = end => {
+      if (end <= start) return;
+      const w = flat(src.slice(start, end).map(c => { const n = norm(c); return (leet && LEET[n]) || n; }).join('').replace(/[^a-z]/g, ''));
+      if (w && badLists.word.has(w)) mark(start, end - 1);
+    };
+    for (let k = 0; k <= src.length; k++) {
+      const sep = k === src.length || /[\s\-_.,;:/*+~#'’"()[\]{}]/.test(src[k]);
+      const cam = k > start && k < src.length && /\p{Lu}/u.test(src[k]) && /\p{Ll}|\d/u.test(src[k - 1]);
+      if (sep || cam) { word(k); start = sep ? k + 1 : k; }
+    }
+  }
+  return hide.size ? src.map((c, k) => (hide.has(k) ? '★' : c)).join('') : src.join('');
+}
+
+// =====================================================================
 //  BONUS DE PARTIE (choix entre 3 à la fin de chaque vague, perdus en cas de défaite)
 // =====================================================================
 const PERKS = [
@@ -7942,7 +7996,7 @@ const JOUR_LINK = /[?&]jour=1/.test(location.search); // arrivé par un « défi
 })();
 function defiLabel() {
   if (!defi) return '';
-  const who = defi.de || T('Un ami');
+  const who = cleanName(defi.de) || T('Un ami');
   if (defi.done) return T('✅ Défi de {0} relevé ! Touche ici pour lui renvoyer ton score 😏', who);
   return defi.t ? T('🎯 {0} te défie : détruis le nid de la Reine en moins de {1} !', who, fmtClockLong(defi.t))
     : T('🎯 {0} te défie : dépasse la vague {1} en mode Histoire !', who, defi.w);
@@ -7956,7 +8010,7 @@ function renderDefi() {
 function defiWon() {
   defi.done = true;
   try { STORE.setItem(DEFI_KEY, JSON.stringify(defi)); } catch { /* stockage bloqué */ }
-  showToast(T('🏆 Défi relevé ! Tu as battu {0}', defi.de || T('ton ami')));
+  showToast(T('🏆 Défi relevé ! Tu as battu {0}', cleanName(defi.de) || T('ton ami')));
 }
 function checkDefiWave(run) { if (defi && !defi.done && defi.w && run.mode === 'histoire' && run.wave > defi.w && !TEST_MODE) defiWon(); }
 function checkDefiChrono(time) { if (defi && !defi.done && defi.t && time < defi.t && !TEST_MODE) defiWon(); }
@@ -8006,7 +8060,7 @@ async function shareChallenge(text, btn, kind) {
     let data = { title: T('Toupie contre Cafards'), text, url };
     if (kind) {
       try {
-        const who = (state.pseudo || '').trim();
+        const who = cleanName((state.pseudo || '').trim());
         const blob = await shareCard(kind.j ? fmtMoney(kind.j) : kind.t ? fmtClockLong(kind.t) : T('VAGUE {0}', kind.w),
           kind.j ? T('Défi du jour n°{0}', kind.n) : kind.t ? T('Nid de la Reine détruit') : (who ? T('par {0}', who) : T('Mode Histoire')));
         const file = blob && new File([blob], 'toupie-cafards.png', { type: 'image/png' });
@@ -8162,14 +8216,14 @@ async function lbFetchSpeed() {
   const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/speedrun.json?orderBy=%22time%22&limitToFirst=50`);
   if (!r.ok) throw new Error(T('lecture impossible'));
   const data = (await r.json()) || {};
-  return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: e.pseudo, time: e.time, t: e.t }))
+  return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: cleanName(e.pseudo), time: e.time, t: e.t }))
     .sort((a, b) => a.time - b.time || a.t - b.t);
 }
 async function lbFetch() {
   const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/histoire.json?orderBy=%22wave%22&limitToLast=50`);
   if (!r.ok) throw new Error(T('lecture impossible'));
   const data = (await r.json()) || {};
-  return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: e.pseudo, wave: e.wave, t: e.t }))
+  return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: cleanName(e.pseudo), wave: e.wave, t: e.t }))
     .sort((a, b) => b.wave - a.wave || a.t - b.t);
 }
 // =====================================================================
@@ -8234,7 +8288,7 @@ function drawPlaque(g, kind, rows, big = false) {
     g.textAlign = 'right'; g.font = '800 ' + fSc + 'px ' + font; g.fillStyle = '#ffe9a8';
     g.fillText(score, W - 70, y + 3, 260);
     const room = W - 70 - Math.min(260, g.measureText(score).width) - 26 - nx;
-    const name = e ? e.pseudo : i === 0 ? T('À toi de jouer !') : '…';
+    const name = e ? cleanName(e.pseudo) : i === 0 ? T('À toi de jouer !') : '…';
     let fs = fMax;
     g.textAlign = 'left'; g.font = '800 ' + fs + 'px ' + font;
     while (g.measureText(name).width > room && fs > fMin) { fs -= 2; g.font = '800 ' + fs + 'px ' + font; }
@@ -8768,7 +8822,7 @@ async function lbDailyFetch(day) {
   const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/jour/${day}.json`);
   if (!r.ok) throw new Error(T('lecture impossible'));
   const data = (await r.json()) || {};
-  return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: e.pseudo, score: e.score, t: e.t }))
+  return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: cleanName(e.pseudo), score: e.score, t: e.t }))
     .sort((a, b) => b.score - a.score || a.t - b.t);
 }
 
@@ -9038,7 +9092,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-23.4';
+const VERSION = '2026-11-23.5';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
