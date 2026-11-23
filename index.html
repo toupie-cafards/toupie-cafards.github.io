@@ -72,6 +72,34 @@
   #hud.tuto-infest #infestBar { min-width: 6%; }
   @keyframes tutoGlow { 0%, 100% { filter: none; } 50% { filter: drop-shadow(0 0 6px #ffe08a) brightness(1.6); } }
   #hud.tuto-infest { z-index: 9; }
+  /* Tuto objectif : le cadre grossit, le reste de l'écran s'assombrit, la ligne dont on parle clignote */
+  #hud { transform-origin: top left; transition: transform .45s cubic-bezier(.2, .9, .3, 1.15), box-shadow .45s; }
+  #hud.tuto-objectif { z-index: 14; transform: scale(var(--tz, 1.8)); box-shadow: 0 0 0 200vmax rgba(0, 0, 0, .55); }
+  #hud.tuto-objectif[data-tf="road"] { transform: none; }
+  #hud.tuto-objectif #money, #hud.tuto-objectif .sub, #hud.tuto-objectif #infestName, #hud.tuto-objectif #infestBar, #hud.tuto-objectif #perksLine,
+  #hud.tuto-objectif[data-tf="quota"] #waveText, #hud.tuto-objectif[data-tf="quota"] #waveSide, #hud.tuto-objectif[data-tf="launches"] #waveText,
+  #hud.tuto-objectif[data-tf="launches"] .histoireOnly { opacity: .3; transition: opacity .3s; }
+  #hud.tuto-objectif[data-tf="quota"] .histoireOnly, #hud.tuto-objectif[data-tf="lose"] .histoireOnly,
+  #hud.tuto-objectif[data-tf="launches"] #waveSide, #hud.tuto-objectif[data-tf="lose"] #waveSide { animation: tutoGlow 0.9s ease-in-out infinite; }
+  /* La route jusqu'au nid de la Reine (pause, défaite, tuto) */
+  .goalRoad { margin: 12px auto; max-width: 440px; text-align: center; }
+  .grTitle { font-weight: 800; font-size: 14px; color: var(--gold); margin-bottom: 8px; }
+  .grSteps { display: flex; align-items: center; justify-content: center; }
+  .grStep { display: flex; flex-direction: column; align-items: center; min-width: 66px; opacity: .45; }
+  .grStep b { font-size: 24px; line-height: 1; font-weight: 400; }
+  .grStep b .ic { width: 28px; height: 28px; }
+  .grStep small { font-size: 11px; font-weight: 700; margin-top: 3px; color: var(--text); white-space: nowrap; }
+  .grStep.done { opacity: .8; }
+  .grStep.now { opacity: 1; transform: scale(1.15); }
+  .grStep.now small { color: var(--gold); }
+  .grStep.goal { opacity: 1; filter: drop-shadow(0 0 6px rgba(255, 215, 106, .8)); }
+  .grLine { flex: 1; max-width: 36px; height: 3px; margin: 0 2px 16px; border-radius: 2px; background: rgba(255, 255, 255, .25); }
+  .grLine.done { background: var(--gold); }
+  #tutoRoad { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); z-index: 15; width: min(440px, calc(100vw - 24px));
+    margin: 0; padding: 16px 12px; background: var(--panel); border-radius: 16px; border: 2px solid rgba(255, 215, 106, .6);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .6); animation: roadIn .45s cubic-bezier(.2, .9, .3, 1.2); }
+  #tutoRoad .grTitle { font-size: 17px; }
+  @keyframes roadIn { from { opacity: 0; transform: translate(-50%, -40%) scale(.85); } }
   @keyframes hurt { 0%, 100% { background: var(--panel); } 30% { background: rgba(180, 30, 20, .9); } }
   #perksLine { margin-top: 6px; font-size: 15px; letter-spacing: 1px; }
   /* Bouton « Ramasser » : gros, en bas à droite (sous le pouce), seulement pendant qu'une toupie tourne */
@@ -1195,7 +1223,7 @@ const EMOJI_ICON = {
   '🔄': 'recommencer', '↩': 'retour', '⏸': 'pause', '⏭': 'passer', '🕸': 'toile', '🕷': 'araignee', '🦂': 'scorpion', '🐜': 'fourmi',
   '🐌': 'escargot', '🥚': 'oeuf', '🐣': 'eclosion', '📊': 'graphique', '🧸': 'doudou', '🧪': 'fiole', '🛡': 'bouclier', '🎨': 'palette',
   '📱': 'telephone', '🚪': 'porte', '📋': 'presse-papier', '📥': 'telecharger', '🍬': 'bonbon', '🔪': 'couteau', '⚙': 'engrenage',
-  '🧴': 'spray', '🪤': 'piege', '👯': 'jumelles', '🦔': 'epines', '🪨': 'pierre', '🐷': 'cochon', '📒': 'carnet', '🃏': 'carte',
+  '🧴': 'spray', '🪤': 'piege', '🍀': 'trefle', '👯': 'jumelles', '🦔': 'epines', '🪨': 'pierre', '🐷': 'cochon', '📒': 'carnet', '🃏': 'carte',
   '♠': 'carte', '⌚': 'montre', '🔬': 'loupe', '🧤': 'gant', '⭐': 'etoile', '🌟': 'etoile', '✨': 'etincelles', '🐉': 'dragon',
   '🦅': 'aigle', '💀': 'crane', '☠': 'crane', '☄': 'comete', '🧹': 'balai', '🏰': 'chateau', '🏹': 'arc', '🔧': 'cle', '📡': 'antenne',
   '🔊': 'son', '🔇': 'muet', '📳': 'vibre', '📴': 'vibre-off', '👇': 'bas', '⚔': 'epees', '👸': 'couronne', '🎉': 'fete', '🔢': 'cible',
@@ -1296,7 +1324,7 @@ const SNACK_MAX = 20;          // bouchées du goûter au début d'une partie
 const INTRO = [
   { face: '😤', text: T('Mon bureau est envahi de cafards ! J’ai tout essayé : le spray, les pièges, la chaussure…') },
   { face: '😮', text: T('Attends… Ma vieille toupie ! Ils vont voir.'), showTop: true },
-  { face: '😏', text: T('À chaque vague, j’en écrase assez avant d’être à court de lancers. À moi de jouer !') },
+  { face: '😏', text: T('Ils viennent tous d’un nid. Je vais le trouver et le détruire !') },
 ];
 
 // =====================================================================
@@ -1485,7 +1513,7 @@ const PERKS = [
   { id: 'cookies', icon: '🍪', name: T('Boîte de cookies'), max: 5, modes: ['carnage'], desc: () => T('+6 bouchées de goûter tout de suite, et +4 au maximum.') },
   { id: 'spray', icon: '🧴', name: T('Spray anti-faim'), max: 3, modes: ['carnage'], desc: () => T('Les affamés traînent 30 % plus longtemps avant de foncer sur le goûter.') },
   { id: 'insecticide', icon: '🐌', name: T('Insecticide'), max: 3, desc: () => T('Les insectes avancent 15 % moins vite et fuient moins bien.') },
-  { id: 'glu', icon: '🪤', name: T('Piège à glu'), max: 3, desc: () => T('Pose un piège collant sur le bureau : les insectes y avancent 4 fois moins vite.') },
+  { id: 'lapin', icon: '🍀', name: T('Patte de lapin'), max: 3, desc: () => T('+2 % de chances qu’un insecte arrive tout doré (il rapporte 10 fois plus).') },
   { id: 'or', icon: '💰', name: T('Ruée vers l’or'), max: 5, desc: () => T('+25 % d’argent par insecte.') },
   { id: 'jumelle', icon: '👯', name: T('Toupie jumelle'), max: 3, desc: () => T('25 % de chance de lancer une toupie en plus.') },
   { id: 'onde', icon: '💥', name: T('Onde de choc'), max: 3, desc: () => T('Quand la toupie tombe, elle explose et blesse les insectes autour.') },
@@ -1510,6 +1538,8 @@ const TOYBOX = [
     desc: () => T('Entre deux vagues, tu choisis parmi 4 bonus au lieu de 3.') },
   { id: 'secours', icon: '🩹', name: T('Toupie de secours'), max: 1, cost: () => 40,
     desc: () => T('Une fois par partie, au moment de perdre : +3 lancers.') },
+  { id: 'glu', icon: '🪤', name: T('Piège à glu'), max: 3, cost: n => 20 + 15 * n,
+    desc: n => T('Chaque partie commence avec {0} piège{1} à glu sur le bureau : les insectes y avancent 4 fois moins vite.', n, n > 1 ? 's' : '') },
   { id: 'montre', icon: '⌚', name: T('Montre de grand-père'), max: 1, cost: () => 20,
     desc: () => T('Ajoute un bouton ⏩ pour jouer en vitesse ×2 (les toupies, les cafards et les vagues vont deux fois plus vite).') },
   // Pour après la mutation des cafards
@@ -1579,7 +1609,7 @@ function rawStats(L, P) {
     // Contre les insectes des stades suivants
     // Pouvoirs des stades suivants (utiles contre tous les insectes)
     dmgMult: (1 + 0.15 * metaLevel('loupe')) * (1 + 0.3 * metaLevel('trophee')),
-    goldChance: L('chance') ? 0.01 + 0.004 * L('chance') : 0,   // aucun insecte doré sans Trèfle doré, puis 1,4 % → 5 %
+    goldChance: (L('chance') ? 0.01 + 0.004 * L('chance') : 0) + 0.02 * P('lapin'),   // aucun insecte doré sans Trèfle doré (ou Patte de lapin), puis 1,4 % → 5 %
     fire: L('feu') ? (0.25 + 0.08 * L('feu')) * (metaLevel('chimiste') ? 2 : 1) : 0,   // dégâts/s, en part d'un coup moyen
     fireLife: 1 + 0.08 * L('feu'),
     souffle: L('souffle') ? 0.03 + 0.012 * L('souffle') : 0,     // rotation rendue par insecte écrasé (part du lancer)
@@ -5618,7 +5648,47 @@ const TUTOS = {
     { face: '🪳', text: T('Quand elle est pleine, une nouvelle espèce débarque : plus grosse, plus résistante… et qui rapporte plus.') },
     { face: '🛠', text: T('Pour suivre, il faudra améliorer ma toupie à l’atelier !') },
   ],
+  // Après le premier lancer : l'objectif de la vague, les lancers, ce qui arrive si on rate… et la fin du jeu
+  objectif: () => {
+    const run = state.run, q = waveQuota(), left = run.launchesLeft;
+    return [
+      { face: '🎯', focus: 'quota', text: T('Regarde en haut à gauche : à chaque vague, j’ai un objectif. Là, je dois écraser {0} insectes.', q) },
+      { face: '🚀', focus: 'launches', text: T('Et juste au-dessus, mes lancers : il m’en reste {0}. Il faut atteindre l’objectif avant d’être à court !', left) },
+      { face: '😱', focus: 'lose', text: T('Si je n’en écrase pas assez à temps, ils se multiplient et envahissent le bureau : c’est perdu, tout recommence à zéro.') },
+      { face: '👑', focus: 'road', text: T('Mais ça ne durera pas toujours : ils viennent tous du nid de la Reine. Si je le détruis, l’invasion est finie !') },
+    ];
+  },
 };
+// La route jusqu'à la fin du jeu, pour qu'on sache dès le début qu'il y a une fin (le nid de la Reine)
+function goalRoad() {
+  const run = state.run, k = run.nestPaid ? 3 : Math.min(2, run.stageSeen || 0);
+  const box = document.createElement('div');
+  box.className = 'goalRoad';
+  const title = document.createElement('div');
+  title.className = 'grTitle';
+  title.textContent = T('🏆 But final : détruire le nid de la Reine');
+  const row = document.createElement('div');
+  row.className = 'grSteps';
+  [['🪳', T('Cafards')], ['🧬', T('Mutants')], ['🕷', T('Araignées')], ['👑', T('Nid de la Reine')]].forEach(([ico, name], i) => {
+    if (i) { const l = document.createElement('i'); l.className = 'grLine' + (i <= k ? ' done' : ''); row.appendChild(l); }
+    const st = document.createElement('span');
+    st.className = 'grStep' + (i < k ? ' done' : i === k ? ' now' : '') + (i === 3 ? ' goal' : '');
+    st.innerHTML = '<b></b><small></small>';
+    st.firstChild.textContent = ico;
+    st.lastChild.textContent = name;
+    row.appendChild(st);
+  });
+  box.append(title, row);
+  return box;
+}
+function tutoRoad(on) {
+  let el = document.getElementById('tutoRoad');
+  if (!on) { el?.remove(); return; }
+  if (el) return;
+  el = goalRoad();
+  el.id = 'tutoRoad';
+  document.body.appendChild(el);
+}
 function showTuto(id) {
   pendingTuto = null;
   state.tutos = state.tutos || {};
@@ -5627,10 +5697,15 @@ function showTuto(id) {
   save();
   paused = true;
   charging = false;
-  document.getElementById('hud').classList.add('tuto-' + id);
-  playDialog(TUTOS[id], () => {
+  const hud = document.getElementById('hud');
+  // Zoom sur le cadre en haut à gauche : assez gros pour bien lire, sans cacher la bulle du bas
+  hud.style.setProperty('--tz', Math.max(1.2, Math.min(2.2, innerWidth * 0.9 / hud.offsetWidth, innerHeight * 0.5 / hud.offsetHeight)).toFixed(2));
+  hud.classList.add('tuto-' + id);
+  playDialog(typeof TUTOS[id] === 'function' ? TUTOS[id]() : TUTOS[id], () => {
     paused = false;
-    document.getElementById('hud').classList.remove('tuto-' + id);
+    hud.classList.remove('tuto-' + id);
+    hud.dataset.tf = '';
+    tutoRoad(false);
   });
 }
 
@@ -7023,7 +7098,6 @@ function takePerk(id) {
   const run = state.run;
   run.perks[id] = perkLevel(id) + 1;
   if (id === 'cookies') { run.maxSnack += 4; run.snack = Math.min(run.maxSnack, run.snack + 6); updateCookies(); }
-  if (id === 'glu') addTrap();
   run.choice = null;
   refreshStats();
   if (isStory()) run.launchesLeft = waveLaunches(); // le bonus « lancer en plus » compte dès cette vague
@@ -7118,7 +7192,7 @@ function defeat() {
   share.textContent = T('📣 Défie un ami');
   share.onclick = () => shareChallenge(T('J’ai tenu jusqu’à la vague {0} dans Toupie contre Cafards 🌀🪳 Tu fais mieux ? 😏', run.wave), share, { w: run.wave });
   btns.append(...(NO_LINKS ? [] : [share]), box, btn);
-  modalBox.append(h, lead, sum, note, btns);
+  modalBox.append(h, lead, sum, goalRoad(), note, btns);
   if (needPseudo() && (state.best.histoire || 1) >= 2) lead.after(pseudoBox(() => { lbSubmit(true); lbSubmitSpeed(true); }));
   modal.classList.add('open');
 }
@@ -7140,10 +7214,11 @@ function applyToybox(run) {
   const d = metaLevel('depart');
   if (d) for (const id of ['endurance', 'puissance', 'diametre']) run.levels[id] = d;
   for (let i = 0; i < metaLevel('doudou'); i++) {
-    const pool = PERKS.filter(p => (!p.modes || p.modes.includes(run.mode)) && !run.perks[p.id] && p.id !== 'glu');
+    const pool = PERKS.filter(p => (!p.modes || p.modes.includes(run.mode)) && !run.perks[p.id]);
     const p = pool[Math.floor(Math.random() * pool.length)];
     if (p) run.perks[p.id] = 1;
   }
+  for (let i = 0; i < metaLevel('glu'); i++) addTrap();
 }
 
 function restartRun() {
@@ -7450,7 +7525,7 @@ function stepIntroCine(dt) {
     }
   }
   // --- Sous-titres : les trois répliques de l'intro ---
-  const SUBS = [[0.8, 4.4, 0], [5.5, 7.8, 1], [7.9, IC_END + 0.3, 2]];
+  const SUBS = [[0.8, 4.4, 0], [5.4, 7.4, 1], [7.5, IC_END + 0.3, 2]];
   const si = SUBS.findIndex(([a, b2]) => t >= a && t < b2);
   if (si !== c.sub) {
     c.sub = si;
@@ -7480,6 +7555,8 @@ function showIntroLine() {
   if (dialogLines === INTRO) introTimer = setTimeout(nextIntroLine, Math.max(2200, l.text.length * 42));
   dialogFace.textContent = l.face;
   dialogLine.textContent = l.text;
+  document.getElementById('hud').dataset.tf = l.focus || '';
+  tutoRoad(l.focus === 'road');
   placeDialog();
   if (l.showTop && !introTop) {
     introTop = { ...makeTopMesh(), t: 0 };
@@ -7550,10 +7627,11 @@ function renderToybox() {
       state.meta.items[t.id] = n + 1;
       rebuildToyDecor();
       if (t.id === 'montre') updateSpeedBtn();
+      if (t.id === 'glu' && !state.run.daily && !state.run.over) addTrap(); // le nouveau piège est posé tout de suite
       refreshStats();
       shopDirty = true;
       save();
-      banner(`${t.icon} ${t.name}`, T('Effet dès la prochaine partie') + (['catalogue', 'carte', 'secours', 'loupe', 'chimiste', 'gants', 'trophee'].includes(t.id) ? T(' (et déjà maintenant)') : ''));
+      banner(`${t.icon} ${t.name}`, T('Effet dès la prochaine partie') + (['catalogue', 'carte', 'secours', 'loupe', 'chimiste', 'gants', 'trophee', 'glu'].includes(t.id) ? T(' (et déjà maintenant)') : ''));
       renderToybox();
       openMenuRefresh();
     };
@@ -8304,6 +8382,8 @@ function openPause() {
   document.getElementById('pauseInfo').textContent = run.daily
     ? T('📅 Défi du jour · {0} lancer{1} restant{1} · {2}', run.launchesLeft, run.launchesLeft > 1 ? 's' : '', fmtMoney(run.money))
     : T(`{0} · vague {1} · {2} · record : vague {3}`, isStory() ? T('📖 Mode Histoire') : T('🍪 Mode Carnage'), run.wave, fmtMoney(run.cash), state.best[run.mode]);
+  document.querySelector('#pause .goalRoad')?.remove();
+  if (isStory() && !run.daily) document.getElementById('pauseInfo').after(goalRoad());
   // Textes des boutons : ceux du défi du jour, ou ceux d'une partie normale
   const rd = document.getElementById('restartDesc'), qd = document.querySelector('#quitBtn .md');
   rd.dataset.base ??= rd.textContent; qd.dataset.base ??= qd.textContent;
@@ -8385,7 +8465,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-22.3';
+const VERSION = '2026-11-23.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -9814,6 +9894,7 @@ function update(dt) {
     launchKills = 0;
     refillBoard();
     maybeShopGuide();
+    if (isStory() && !run.daily && run.wave <= 2 && !state.tutos?.objectif) pendingTuto = 'objectif';
   }
   if (!isStory()) {
     if (aliveBefore > 0 && aliveNow === 0) cooldown = S.cooldown;
@@ -9923,7 +10004,7 @@ function update(dt) {
   if (gameTime - lastKillTime > S.comboWindow) document.getElementById('comboMeter').classList.remove('on');
   achTimer -= dt;
   if (achTimer <= 0) { achTimer = 0.5; checkAchievements(); }
-  else if (pendingTuto && !paused && introStep < 0) showTuto(pendingTuto);
+  else if (pendingTuto && !paused && introStep < 0 && !aliveTops().length && !(pendingTuto === 'objectif' && state.run.cleared) && !shopEl.classList.contains('open') && !document.getElementById('modal').classList.contains('open')) showTuto(pendingTuto);
 
   // Interface (pas à chaque image, pour économiser la batterie)
   hudTimer -= dt;
@@ -10017,7 +10098,7 @@ if (TEST_MODE === 'nid' || TEST_MODE === 'boss') {
   Object.assign(run.levels, { endurance: 46, puissance: 47, diametre: 35, lames: 45, elan: 45, poids: 44, appat: 45, pointe: 40, nid: 32,
     prime: 42, inertie: 41, precision: 20, rebond: 12, multi: 4, equilibre: 40, combo: 30, critique: 38, agressivite: 25, chance: 10,
     feu: 35, souffle: 18, trampoline: 16, eclair: 18, tornade: 18 });
-  run.perks = { jumelle: 3, lancer: 3, plomb: 4, ressort: 4, roulement: 4, aiguise: 5, or: 5, onde: 3, epines: 3, braise: 3, odeur: 3, insecticide: 3, glu: 1 };
+  run.perks = { jumelle: 3, lancer: 3, plomb: 4, ressort: 4, roulement: 4, aiguise: 5, or: 5, onde: 3, epines: 3, braise: 3, odeur: 3, insecticide: 3, lapin: 1 };
   const spider = BUG_TYPES.findIndex(t => t.stage === 2);
   run.infest = INFEST_THRESHOLDS[spider + 2] + 100;
   run.stageSeen = 2;
