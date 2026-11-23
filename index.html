@@ -359,6 +359,8 @@
     max-height: calc(100vh - 32px); overflow-y: auto; text-align: center; }
   .modalBox h2 { margin: 0 0 4px; font-size: 22px; }
   .modalBox .lead { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
+  .specialWave { margin: 0 0 14px; padding: 9px 12px; border-radius: 12px; border: 2px solid #ffb347; background: rgba(255,150,40,.14); font-size: 14px; text-align: left; }
+  .specialWave b { display: block; color: #ffc46a; font-size: 16px; }
   .perkChoices { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
   .perk { border: 2px solid rgba(255,255,255,.12); background: var(--panel-2); border-radius: 12px; padding: 14px 10px; color: var(--text);
     cursor: pointer; font: inherit; text-align: center; transition: transform .1s, border-color .1s; }
@@ -446,6 +448,7 @@
   .crDot .pt { width: 14px; height: 14px; border-radius: 50%; background: #5a4a6a; border: 2px solid #9a8aaa; position: relative; z-index: 1; }
   .crDot.on { color: #ffd45a; font-weight: 800; }
   .crDot.on .pt { background: #ffd45a; border-color: #fff; transform: scale(1.3); }
+  .crFans b { color: #ffd45a; }
   .crThanks { font-size: 13px; color: #d9cbe6; line-height: 1.6; margin: 6px 0 2px; }
   .crBtns { display: flex; flex-direction: column; align-items: center; gap: 4px; }
   #lbPanel { position: fixed; inset: 0; z-index: 25; display: none; align-items: center; justify-content: center; padding: 16px;
@@ -821,6 +824,7 @@
   <div class="crInfo"><div class="crName" id="crName"></div><div class="crDesc" id="crDesc"></div></div>
   <div class="crFrise" id="crFrise"></div>
   <p class="crThanks">Toupie contre Cafards<br>Merci à toutes celles et ceux qui ont joué, testé, trouvé des bugs (les vrais) et donné des idées.<br>À bientôt sur le bureau !</p>
+  <p class="crThanks crFans"><span>☕ Merci à ceux qui soutiennent le jeu :</span> <b id="crFans"></b></p>
   <div class="crBtns"><button class="bigBtn" id="crNew">Nouvelle partie</button><button class="bigBtn" id="crShare" style="background: var(--accent)">📣 Défie un ami</button><a class="bigBtn coffeeBig" id="crCoffee" href="#" target="_blank" rel="noopener noreferrer">☕ Offrir un café</a><button class="linkBtn" id="crLb">Voir le classement</button></div>
 </div>
 
@@ -1084,6 +1088,7 @@ const ICO_MEDAL = (col) => '<path d="M8 2h6l3 10h-6zM24 2h-6l-3 10h6z" fill="#e2
 const ICO_TOP = (dx, dy, s) => '<g transform="translate(' + dx + ' ' + dy + ') scale(' + s + ')"><path d="M14 2h4v6h-4z" fill="#f5c542"/>' +
   '<path d="M5 13c0-3 5-5 11-5s11 2 11 5c0 5-7 11-11 17C12 24 5 18 5 13z" fill="#e2483d"/><path d="M5.5 14.5c4 3 17 3 21 0"/></g>';
 const ICONS = {
+  lune: '<path d="M20.5 4.5A12.5 12.5 0 1 0 28 20 10.5 10.5 0 0 1 20.5 4.5z" fill="#f5d76a"/><circle cx="12" cy="18" r="1.6" fill="#d9b23f" stroke="none"/><circle cx="16" cy="24" r="1.2" fill="#d9b23f" stroke="none"/>',
   megaphone: '<path d="M4 13h4v6H4z" fill="#ece7df"/><path d="M8 13l13-6.5v19L8 19z" fill="#e0533d"/><path d="M9 19.5l2 7h3.5l-1.6-6.3" fill="#8b5a33"/><path d="M24.5 12.5c1.6 1.6 1.6 5.4 0 7M27.5 9.5c3.2 3.4 3.2 9.6 0 13" stroke-width="1.7"/>',
   tasse: '<path d="M5 28h20"/><path d="M6 13h16v6.5a7.5 7.5 0 0 1-7.5 7.5h-1A7.5 7.5 0 0 1 6 19.5z" fill="#f6e3c0"/><path d="M7 14.2h14v2.4H7z" fill="#8b5a33" stroke="none"/><path d="M22 15.5h1.8a3 3 0 0 1 0 6H22"/><path d="M11.5 10c-1.6-1.6 1.6-3.2 0-5.5M16.5 10c-1.6-1.6 1.6-3.2 0-5.5" stroke-width="1.6"/>',
   de: '<rect x="5.5" y="5.5" width="21" height="21" rx="4.5" fill="#fff3e0"/><circle cx="11" cy="11" r="2" fill="#3b2414" stroke="none"/><circle cx="16" cy="16" r="2" fill="#3b2414" stroke="none"/><circle cx="21" cy="21" r="2" fill="#3b2414" stroke="none"/><circle cx="21" cy="11" r="2" fill="#3b2414" stroke="none"/><circle cx="11" cy="21" r="2" fill="#3b2414" stroke="none"/>',
@@ -1214,6 +1219,7 @@ const ICONS = {
 };
 // Chaque émoji du jeu → son icône
 const EMOJI_ICON = {
+  '🌑': 'lune',
   '🎲': 'de', '🎵': 'son',
   '🌊': 'vague', '🌀': 'toupie', '🍪': 'cookie', '🪳': 'cafard', '🔥': 'flamme', '📦': 'carton', '🏆': 'trophee', '⚠': 'attention',
   '🎯': 'cible', '📖': 'livre', '🧬': 'adn', '🔒': 'cadenas', '🔓': 'ouvert', '⏩': 'avance', '▶': 'lecture', '🛠': 'outils', '👑': 'couronne',
@@ -1521,6 +1527,12 @@ const PERKS = [
   { id: 'braise', icon: '🔥', name: T('Combo brûlant'), max: 3, desc: () => T('+10 % de bonus par insecte dans un combo.') },
   { id: 'epines', icon: '🦔', name: T('Épines empoisonnées'), max: 3, desc: () => T('+10 % de chance de coup critique.') },
   { id: 'plomb', icon: '🪨', name: T('Lest en plomb'), max: 4, desc: () => T('+25 % de poids.') },
+  // Sans fin : proposés seulement quand il ne reste plus assez de bonus normaux (vers la vague 47)
+  { id: 'trempe', icon: '⚔️', name: T('Acier trempé'), max: Infinity, late: true, desc: () => T('+8 % de dégâts. Se prend autant de fois qu’on veut.') },
+  { id: 'huile', icon: '🔧', name: T('Huile de course'), max: Infinity, late: true, desc: () => T('La toupie tourne 5 % plus longtemps. Se prend autant de fois qu’on veut.') },
+  { id: 'miettes', icon: '🍪', name: T('Miettes partout'), max: Infinity, late: true, desc: () => T('+4 % d’insectes qui arrivent et +1 place sur le bureau. Se prend autant de fois qu’on veut.') },
+  { id: 'lynx', icon: '🏹', name: T('Œil de lynx'), max: Infinity, late: true, desc: () => T('+5 % de chance de coup critique (au-delà de 100 %, les critiques font plus mal). Se prend autant de fois qu’on veut.') },
+  { id: 'coffre', icon: '💎', name: T('Coffre-fort'), max: Infinity, late: true, desc: () => T('+15 % d’argent par insecte. Se prend autant de fois qu’on veut.') },
 ];
 // =====================================================================
 //  LE CARTON À JOUETS : boutique permanente, payée en 🌊 (1 par vague repoussée, gardées même après une défaite)
@@ -1579,25 +1591,25 @@ function rawStats(L, P) {
     radius: 0.036 * (1 + 0.08 * L('diametre')),
     mass: 20 * (1 + 0.15 * L('poids')) * Math.pow(1.25, P('plomb')),
     inertia: 1 / (1 + 0.12 * L('inertie')),
-    decay: 0.17 / (1 + 0.15 * L('endurance')) * Math.pow(0.8, P('roulement')),
+    decay: 0.17 / (1 + 0.15 * L('endurance')) * Math.pow(0.8, P('roulement')) / (1 + 0.05 * P('huile')),
     linFric: 0.75 / (1 + 0.12 * L('pointe')),
     drift: 0.22 * (1 + 0.1 * L('pointe')),
-    blades: (1 + 0.15 * L('lames')) * Math.pow(1.2, P('aiguise')),
+    blades: (1 + 0.15 * L('lames')) * Math.pow(1.2, P('aiguise')) * Math.pow(1.08, P('trempe')),
     fallRatio: 0.25 / (1 + 0.1 * L('equilibre')),
     restitution: Math.min(0.95, 0.35 + 0.05 * L('rebond')),
     chase: 0.12 * L('agressivite'),
     // Chance de critique plafonnée à 100 % : chaque point au-dessus augmente les dégâts critiques (×3 → ×3,6 pour 120 %)
-    crit: Math.min(1, 0.03 * L('critique') + 0.1 * P('epines')),
-    critMult: 3 * Math.max(1, 0.03 * L('critique') + 0.1 * P('epines')),
+    crit: Math.min(1, 0.03 * L('critique') + 0.1 * P('epines') + 0.05 * P('lynx')),
+    critMult: 3 * Math.max(1, 0.03 * L('critique') + 0.1 * P('epines') + 0.05 * P('lynx')),
     rpm: 600 * (1 + 0.18 * L('puissance')) * Math.pow(1.15, P('ressort')),
     speed: 0.35 * (1 + 0.12 * L('elan')) * Math.pow(1.2, P('ressort')),
     perfect: 0.06 + 0.02 * L('precision'),
     cooldown: 2.5 / (1 + 0.2 * L('recharge')), // seulement en mode Carnage
     tops: 1 + L('multi'),
     // Appât : +15 % par niveau jusqu'au niveau 20, puis ×1,05 par niveau (en fin de partie, chaque niveau compte vraiment)
-    spawnRate: 0.9 * (1 + 0.15 * Math.min(20, L('appat'))) * Math.pow(1.05, Math.max(0, L('appat') - 20)),
-    maxBugs: 12 + 2 * L('nid'),
-    bounty: (1 + 0.1 * L('prime')) * (1 + 0.25 * P('or')) * (1 + 0.3 * metaLevel('trophee')),
+    spawnRate: 0.9 * (1 + 0.15 * Math.min(20, L('appat'))) * Math.pow(1.05, Math.max(0, L('appat') - 20)) * (1 + 0.04 * P('miettes')),
+    maxBugs: 12 + 2 * L('nid') + Math.min(20, P('miettes')),
+    bounty: (1 + 0.1 * L('prime')) * (1 + 0.25 * P('or')) * (1 + 0.15 * P('coffre')) * (1 + 0.3 * metaLevel('trophee')),
     comboWindow: 1.2 + 0.2 * L('combo'),
     comboBonus: 0.1 + 0.02 * L('combo') + 0.1 * P('braise'),
     smellRadius: P('odeur') ? smellRadius(P('odeur')) : 0,
@@ -1650,7 +1662,7 @@ const state = {
   tutos: {}, // les petites explications déjà montrées
   achievements: {}, // succès débloqués
   settings: { sound: true, vibrate: true, sfxVol: 0.7, musVol: 0.5 },
-  maxStage: 0, perfectBest: 0, bestRunMoney: 0, goldenKills: 0,
+  maxStage: 0, perfectBest: 0, bestRunMoney: 0, goldenKills: 0, chiefKills: 0,
   pseudo: '',
   nestWins: 0,
   autoOn: false, // lanceur automatique allumé ?
@@ -1662,7 +1674,7 @@ const state = {
   speedX2: false,
   run: null,
 };
-const PERSISTED = ['totalMoney', 'kills', 'launches', 'bestCombo', 'killsByType', 'mode', 'introSeen', 'tutos', 'best', 'games', 'savedRuns', 'meta', 'speedX2', 'achievements', 'settings', 'maxStage', 'perfectBest', 'bestRunMoney', 'goldenKills', 'pseudo', 'lb', 'nestWins', 'autoOn', 'shareRewarded', 'daily', 'demoDone'];
+const PERSISTED = ['totalMoney', 'kills', 'launches', 'bestCombo', 'killsByType', 'mode', 'introSeen', 'tutos', 'best', 'games', 'savedRuns', 'meta', 'speedX2', 'achievements', 'settings', 'maxStage', 'perfectBest', 'bestRunMoney', 'goldenKills', 'chiefKills', 'pseudo', 'lb', 'nestWins', 'autoOn', 'shareRewarded', 'daily', 'demoDone'];
 function load() {
   try {
     const data = JSON.parse(STORE.getItem(SAVE_KEY));
@@ -1742,6 +1754,68 @@ function infestLevel() {
 function stageIndex(l = infestLevel()) { return BUG_TYPES[l].stage; }
 // Vie d'un insecte : celle de sa fiche, multipliée pour les mutants (pas pour les petits, qui meurent toujours en un coup)
 const LATE = { from: 40, quota: 1.015, hp: 1.015 };
+// VAGUES SPÉCIALES (Histoire, à partir de la vague 47) : deux par tranche de 5 vagues (47, 49, 52, 54…), et un chef toutes
+// les 5 vagues (50, 55, 60…). Elles tournent dans un ordre fixe, le même pour tout le monde (classement).
+// quota : objectif multiplié ; gain : argent multiplié ; speed : vitesse des insectes ; spawn / cap : arrivées et places en plus
+const SPECIAL_FROM = 47;
+const SPECIALS = [
+  { id: 'or', icon: '💰', name: T('Pluie d’or'), desc: T('Les insectes dorés tombent en pluie (ils rapportent 10 fois plus) !'), gold: 0.12, quota: 1 },
+  { id: 'boum', icon: '💥', name: T('Insectes explosifs'), desc: T('Chaque insecte écrasé explose et blesse ses voisins !'), boom: true, quota: 1.2 },
+  { id: 'panne', icon: '🌑', name: T('Panne de courant'), desc: T('Plus de lumière : la lampe de poche suit ta toupie. Argent ×1,5 !'), dark: true, gain: 1.5, quota: 0.95 },
+  { id: 'geants', icon: '🪨', name: T('Les géants'), desc: T('Moins d’insectes à écraser, mais énormes ! Argent ×2.'), giant: true, gain: 2, quota: 0.6 },
+  { id: 'vent', icon: '🌪️', name: T('Fenêtre ouverte'), desc: T('Le vent pousse la toupie d’un bord à l’autre. Argent ×1,5 !'), wind: 0.5, gain: 1.5, quota: 0.85 },
+  { id: 'retour', icon: '🪳', name: T('Le retour des cafards'), desc: T('Les vieux cafards reviennent en masse… venge-toi !'), old: true, spawn: 1.6, cap: 12, gain: 80, quota: 1.7 },
+  { id: 'frenesie', icon: '⚡', name: T('Frénésie'), desc: T('Les insectes courent deux fois plus vite. Argent ×1,5 !'), speed: 2, gain: 1.5, quota: 0.8 },
+];
+const CHIEFS = [
+  { base: 'goliath', name: T('Goliath le Colosse') },
+  { base: 'scorpion', name: T('L’Empereur scorpion') },
+  { base: 'mygale', name: T('La Mygale monstrueuse') },
+  { base: 'mere', name: T('La Grande Tisseuse') },
+];
+const CHIEF_WAVE = { icon: '👑', chief: true, quota: 1 };
+let CHIEF_HITS = 300, CHIEF_SHARE = 0.35; // nombre de coups pour le battre (vague 50) ; part de l'objectif qu'il rapporte
+function waveSpecial(wave) {
+  const run = state.run;
+  if (!run || run.mode !== 'histoire' || run.daily || nest || DEMO) return null;
+  const w = wave ?? run.wave;
+  if (w < SPECIAL_FROM) return null;
+  if (w % 5 === 0) return CHIEF_WAVE;
+  if (w % 5 !== 2 && w % 5 !== 4) return null;
+  return SPECIALS[(Math.floor((w - 45) / 5) * 2 + (w % 5 === 4 ? 1 : 0)) % SPECIALS.length];
+}
+function chiefOf(wave) { return CHIEFS[(Math.floor(wave / 5) - 10) % CHIEFS.length]; }
+function chiefWorth(wave = state.run.wave) { return Math.ceil(quotaAt(wave) * CHIEF_SHARE); }
+function specialText(wave = state.run.wave) { // le titre et l'explication de la vague spéciale, ou null
+  const sp = waveSpecial(wave);
+  if (!sp) return null;
+  if (sp.chief) return { title: '👑 ' + chiefOf(wave).name, desc: T('Un chef ! Le battre compte pour {0} insectes et rapporte 5 🌊.', chiefWorth(wave)) };
+  return { title: sp.icon + ' ' + sp.name, desc: sp.desc };
+}
+const derivedTypes = {};
+function giantOf(t) { return derivedTypes['g-' + t.id] ||= { ...t, r: Math.min(0.1, t.r * 1.5), mass: t.mass * 1.5, hp: t.hp * 1.6 }; }
+function chiefTypeOf(wave) {
+  const c = chiefOf(wave), t = bugType(c.base);
+  return derivedTypes['c-' + c.base] ||= { ...t, name: c.name, r: 0.16, mass: 110, speed: 0.055, fear: 0, reward: t.reward * 30, pts: 25, crown: true, chief: true };
+}
+function spawnChief() {
+  const run = state.run;
+  const b = spawnBug(false, 0.9, { type: chiefTypeOf(run.wave), x: 0, z: -0.15 });
+  b.chief = true;
+  // Un halo rouge au sol et des yeux de braise : on le repère tout de suite
+  const halo = new THREE.Mesh(smellGeo, new THREE.MeshBasicMaterial({ color: 0xff4020, transparent: true, opacity: 0.75, depthWrite: false }));
+  halo.position.y = 0.03;
+  halo.scale.setScalar(1.5);
+  b.group.add(halo);
+  b.mat.emissive.setHex(0xff3010);
+  b.mat.emissiveIntensity = 0.22;
+  b.maxHp = Math.max(1, Math.round(CHIEF_HITS * nestHitAvg() * Math.pow(1.012, run.wave - 50)));
+  b.hp = Math.max(1, b.maxHp * (run.chiefHp ?? 1));
+  SFX.play('mutation');
+  addShake(0.015);
+  buzz([60, 40, 60]);
+  return b;
+}
 let TOP_TIRED = 25; // fin de partie (vague 36+) : secondes avant que la toupie commence à fatiguer
 function bugHp(t) {
   if (FODDER_TYPES.includes(t) || t.hp < 1) return t.hp;
@@ -4810,8 +4884,8 @@ let spawnTimer = 0;
 
 // Difficulté selon la vague
 // En Histoire, l'arrivée des insectes ne dépend que de l'Appât et du Nid : pour suivre les objectifs, il faut investir
-function waveSpawnMult() { return isStory() ? 1 : 1 + 0.08 * (state.run.wave - 1); }
-function bugCap() { return S.maxBugs + Math.min(infestLevel(), 6) * 2 + (isStory() ? 0 : Math.floor((state.run.wave - 1) / 2)); }
+function waveSpawnMult() { return isStory() ? waveSpecial()?.spawn || 1 : 1 + 0.08 * (state.run.wave - 1); }
+function bugCap() { return S.maxBugs + (waveSpecial()?.cap || 0) + Math.min(infestLevel(), 6) * 2 + (isStory() ? 0 : Math.floor((state.run.wave - 1) / 2)); }
 // Histoire : X insectes à écraser en un nombre limité de lancers
 function waveLaunches() { return WAVE_LAUNCHES + perkLevel('lancer') + (stageSeen() >= 1 ? metaLevel('gants') : 0); }
 // L'objectif de chaque vague, réglé au robot « joueur parfait » (lancers toujours PARFAIT, visée optimale, achats optimisés)
@@ -4834,11 +4908,17 @@ function quotaAt(wave) {
   }
   return last[1];
 }
-function waveQuota() { return quotaAt(state.run.wave); }
+function waveQuota() { return Math.ceil(quotaAt(state.run.wave) * (waveSpecial()?.quota || 1)); }
 // Carnage : nombre d'insectes affamés envoyés vers le goûter pendant la vague
 function waveRaiders() { return 1 + Math.floor(0.75 * (state.run.wave - 1)); }
 
 function pickBugType() {
+  const sp = waveSpecial();
+  if (sp?.old) return BUG_TYPES[Math.floor(rnd() * 4)]; // le retour des cafards
+  const t = pickNormalType();
+  return sp?.giant && !FODDER_TYPES.includes(t) ? giantOf(t) : t;
+}
+function pickNormalType() {
   const lvl = infestLevel();
   const st = STAGES[stageIndex(lvl)];
   const fodder = bugType(st.fodder);
@@ -4891,7 +4971,7 @@ function spawnBug(hungry = false, dropFrom = null, at = null) {
     drop: dropFrom ?? 0.35 + rnd() * 0.6, dropV: 0, tumble: (rnd() - 0.5) * 12, landT: 0,
   };
   mesh.group.position.set(x, bug.drop, z);
-  if (!hungry && !at?.type && rnd() < S.goldChance) {
+  if (!hungry && !at?.type && rnd() < S.goldChance + (waveSpecial()?.gold || 0)) {
     bug.golden = true;
     gildBug(bug);
     try { SFX.play('evolve'); } catch { /* sons pas encore prêts */ }
@@ -4930,6 +5010,7 @@ function clearBoard() {
   tops.length = 0;
   clearWebs();
   for (const f of flames) { f.life = 0; f.m.visible = false; }
+  booms.length = 0;
   spawnTimer = 0;
   cooldown = 0;
 }
@@ -5568,6 +5649,9 @@ const ACHIEVEMENTS = [
   { id: 'legend', icon: '🌀', name: T('Toupie légendaire'), desc: T('Atteindre 175 niveaux d’améliorations pour la toupie.'), reward: 10, v: () => state.run ? topPower() : 0, goal: 175 },
   { id: 'gold1', icon: '✨', name: T('Ruée vers l’or'), desc: T('Écraser un insecte doré.'), reward: 2, v: () => state.goldenKills || 0, goal: 1 },
   { id: 'gold10', icon: '🪙', name: T('Chasseur d’or'), desc: T('Écraser 10 insectes dorés.'), reward: 8, v: () => state.goldenKills || 0, goal: 10 },
+  { id: 'chef1', icon: '👑', name: T('Chef de bureau'), desc: T('Battre un chef (vague 50 et plus).'), reward: 10, v: () => state.chiefKills || 0, goal: 1 },
+  { id: 'chef5', icon: '⚔️', name: T('Tueur de colosses'), desc: T('Battre 5 chefs.'), reward: 30, v: () => state.chiefKills || 0, goal: 5 },
+  { id: 'w75', icon: '☄️', name: T('Increvable'), desc: T('Atteindre la vague 75.'), reward: 60, v: () => state.best.histoire, goal: 75 },
   { id: 'nest', icon: '🔥', name: T('Exterminateur'), desc: T('Détruire le nid des cafards.'), reward: 30, v: () => state.nestWins || 0, goal: 1 },
   { id: 'multi5', icon: '🖐️', name: T('Cinq à la fois'), desc: T('Lancer 5 toupies d’un coup.'), reward: 10, v: () => state.run ? 1 + lv('multi') : 1, goal: 5 },
 ];
@@ -5647,6 +5731,11 @@ const TUTOS = {
     { face: '📊', text: T('Regarde la barre d’infestation, en haut à gauche : elle se remplit à chaque insecte écrasé (les gros comptent plus que les petits).') },
     { face: '🪳', text: T('Quand elle est pleine, une nouvelle espèce débarque : plus grosse, plus résistante… et qui rapporte plus.') },
     { face: '🛠', text: T('Pour suivre, il faudra améliorer ma toupie à l’atelier !') },
+  ],
+  special: [
+    { face: '😳', text: T('Ils changent de tactique ! À partir de maintenant, certaines vagues seront vraiment spéciales…') },
+    { face: '👑', text: T('Et toutes les 5 vagues, un chef débarque. Si je le bats, l’objectif avance d’un coup !') },
+    { face: '💪', text: T('Et il y aura toujours un bonus à choisir, sans limite. Jusqu’où je vais tenir ?') },
   ],
   // Après le premier lancer : l'objectif de la vague, les lancers, ce qui arrive si on rate… et la fin du jeu
   objectif: () => {
@@ -5784,7 +5873,8 @@ function killBug(b) {
   lastKillTime = gameTime;
   state.bestCombo = Math.max(state.bestCombo, combo);
   const comboMult = Math.min(COMBO_CAP, 1 + (combo - 1) * S.comboBonus);
-  let gain = b.t.reward * S.bounty * comboMult;
+  const sp = waveSpecial();
+  let gain = b.t.reward * S.bounty * comboMult * (sp?.gain || 1);
   if (b.golden) {
     gain *= 10;
     state.goldenKills = (state.goldenKills || 0) + 1;
@@ -5802,12 +5892,25 @@ function killBug(b) {
   run.money += gain;
   state.killsByType[b.t.id] = (state.killsByType[b.t.id] || 0) + 1;
   if (isStory() && !nest && !run.daily) {
-    if (countsForQuota(b.t)) run.waveKills++;
+    if (countsForQuota(b.t)) run.waveKills += b.chief ? chiefWorth() : 1;
     if (!run.cleared && run.waveKills >= waveQuota()) {
       run.cleared = true;
       banner(T('🎯 Objectif atteint !'), T('La vague sera repoussée quand la toupie s’arrêtera'));
     }
   }
+  if (b.chief) {
+    run.chiefDead = true;
+    state.chiefKills = (state.chiefKills || 0) + 1;
+    state.meta.earned += 5;
+    run.metaGain = (run.metaGain ?? run.wavesCleared) + 5;
+    hype(T('👑 Chef vaincu ! +5 🌊'));
+    SFX.play('achieve');
+    addShake(0.02);
+    buzz([60, 40, 120]);
+    addShock(b.x, b.z, 0.5, 0xffd45a);
+    burst(b.x, b.z, 40, 0xffd040, 0.07);
+    coinFly(b.x, b.z, 14);
+  } else if (sp?.boom) booms.push({ x: b.x, z: b.z, t: 0.1, dmg: b.maxHp * 0.35, r: 0.1 + b.t.r });
   popup('+' + fmtMoney(gain), b.x, b.z);
   if (combo >= 2) popup(T('Combo ×') + combo, b.x, b.z - 0.05, 'crit');
   launchKills++;
@@ -5908,6 +6011,70 @@ function hitBug(top, b, now) {
   }
 }
 
+// Insectes explosifs : l'explosion part un instant après la mort (les réactions en chaîne se voient)
+const booms = [];
+function stepBooms(dt) {
+  for (let i = booms.length - 1; i >= 0; i--) {
+    const o = booms[i];
+    if ((o.t -= dt) > 0) continue;
+    booms.splice(i, 1);
+    addShock(o.x, o.z, o.r, 0xff7a30);
+    burst(o.x, o.z, 7, 0xff9a40, 0.03);
+    for (const b of bugs) {
+      if (b.dying || b.gone || b.drop > 0 || b.boss) continue;
+      if (Math.hypot(b.x - o.x, b.z - o.z) > o.r + b.t.r) continue;
+      b.hp -= o.dmg;
+      if (b.hp <= 0) killBug(b);
+    }
+  }
+}
+// Panne de courant (la lumière baisse et la lampe suit la toupie) et vent (feuilles qui volent)
+let darkK = 0;
+const POOL_POS = new THREE.Vector3(-0.35, 1.35, -0.5), POOL_TGT = new THREE.Vector3(0.05, 0, 0.12), poolV = new THREE.Vector3();
+const leaves = [];
+function stepSpecialLook(dt) {
+  const sp = waveSpecial(), want = sp?.dark ? 1 : 0;
+  if (darkK !== want) {
+    darkK = nest ? 0 : want > darkK ? Math.min(1, darkK + dt * 1.2) : Math.max(0, darkK - dt * 1.2);
+    hemiLight.intensity = 0.35 * (1 - 0.85 * darkK);
+    lamp.intensity = 1.45 * (1 - 0.95 * darkK);
+    rimLight.intensity = 0.55 * (1 - 0.8 * darkK);
+    lampPool.angle = 0.7 - 0.42 * darkK;
+    lampPool.intensity = 5.5 + 6 * darkK;
+    renderer.toneMappingExposure = 0.95 - 0.3 * darkK;
+    if (darkK === 0) { lampPool.position.copy(POOL_POS); lampPool.target.position.copy(POOL_TGT); }
+  }
+  if (darkK > 0) {
+    const tp = aliveTops()[0];
+    poolV.set(tp ? tp.x : LAUNCH.x, 0, tp ? tp.z : LAUNCH.y);
+    lampPool.target.position.lerp(poolV, Math.min(1, dt * 6));
+    poolV.set(lampPool.target.position.x - 0.12, 1.25, lampPool.target.position.z + 0.1);
+    lampPool.position.lerp(poolV, Math.min(1, dt * 6));
+  }
+  const on = !!sp?.wind;
+  if (on && !leaves.length) {
+    const geo = new THREE.CircleGeometry(0.012, 6);
+    for (let i = 0; i < 18; i++) {
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: [0x8aa83a, 0xc98a2e, 0xb8562a][i % 3], side: THREE.DoubleSide, roughness: 0.8 }));
+      m.scale.set(1.5, 0.7, 1);
+      scene.add(m);
+      leaves.push({ m, x: (Math.random() * 2 - 1) * DESK_X, y: 0.04 + Math.random() * 0.25, z: (Math.random() * 2 - 1) * DESK_Z, p: Math.random() * 7 });
+    }
+  }
+  for (const f of leaves) {
+    f.m.visible = on;
+    if (!on) continue;
+    const w = Math.sin(gameTime * 0.8);
+    f.x += (w * 0.9 + 0.1 * Math.sin(gameTime * 3 + f.p)) * dt;
+    f.z += 0.25 * Math.cos(gameTime * 0.5 + f.p) * dt;
+    if (f.x > DESK_X + 0.15) f.x = -DESK_X - 0.15;
+    if (f.x < -DESK_X - 0.15) f.x = DESK_X + 0.15;
+    if (Math.abs(f.z) > DESK_Z) f.z = -Math.sign(f.z) * DESK_Z;
+    f.m.position.set(f.x, f.y + 0.03 * Math.sin(gameTime * 4 + f.p), f.z);
+    f.m.rotation.set(gameTime * 3 + f.p, gameTime * 2 + f.p, gameTime * 4);
+  }
+}
+
 function shockwave(top) {
   const r = S.shockRadius;
   addShock(top.x, top.z, r);
@@ -5970,6 +6137,8 @@ function stepTop(top, dt, now) {
     const dx = nest.boss.x - top.x, dz = nest.boss.z - top.z, d = Math.hypot(dx, dz) || 1;
     ax += (dx / d) * NEST_PULL; az += (dz / d) * NEST_PULL;
   }
+  const wind = waveSpecial()?.wind;
+  if (wind) { ax += wind * Math.sin(gameTime * 0.8); az += wind * 0.3 * Math.cos(gameTime * 0.5); }
   top.vx += ax * dt;
   top.vz += az * dt;
   const fr = Math.exp(-S.linFric * dt);
@@ -6881,7 +7050,7 @@ function stepBug(b, dt) {
     if (b.webT <= 0) { b.webT = 6 + Math.random() * 3; addWeb(b.x, b.z); }
   }
   if (b.landT > 0) b.landT -= dt;
-  const slow = (onTrap(b.x, b.z) ? 0.25 : 1) * S.bugSpeed;
+  const slow = (onTrap(b.x, b.z) ? 0.25 : 1) * S.bugSpeed * (waveSpecial()?.speed || 1);
 
   // Les affamés (Carnage) partent manger le goûter. Les insectes ne quittent jamais le bureau :
   // ils ne disparaissent que quand on les écrase.
@@ -6981,13 +7150,16 @@ const modal = document.getElementById('modal'), modalBox = document.getElementBy
 
 function availablePerks() {
   const m = state.run.mode;
-  return PERKS.filter(p => perkLevel(p.id) < p.max && (!p.modes || p.modes.includes(m)));
+  return PERKS.filter(p => !p.late && perkLevel(p.id) < p.max && (!p.modes || p.modes.includes(m)));
 }
 function pickChoices() {
   const pool = availablePerks().slice();
   const out = [];
   const count = 3 + metaLevel('carte');
   while (out.length < count && pool.length) out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0].id);
+  // Plus assez de bonus normaux : on complète avec les bonus sans fin (il y a toujours un choix à faire)
+  const late = isStory() && !DEMO ? PERKS.filter(p => p.late) : [];
+  while (out.length < count && late.length) out.push(late.splice(Math.floor(Math.random() * late.length), 1)[0].id);
   return out;
 }
 
@@ -7023,6 +7195,12 @@ function endWave() {
   const lockedBefore = UPGRADES.filter(u => upgradeLock(u));
   run.wave++;
   startWave();
+  // Vague spéciale qui commence ou qui finit : le bureau se vide et tout le monde retombe du ciel
+  if (isStory() && (waveSpecial(run.wave) || waveSpecial(run.wave - 1))) {
+    for (let i = bugs.length - 1; i >= 0; i--) removeBug(i);
+    booms.length = 0;
+    refillBoard();
+  }
   checkDefiWave(run);
   if (run.mode === 'histoire' && (run.wave <= 5 || run.wave % 5 === 0)) statsSend(run.wave); // vagues 1 à 5, puis toutes les 5
   if (run.wave > state.best[run.mode]) {
@@ -7046,6 +7224,8 @@ function startWave() {
   run.cleared = false;
   run.waveTime = 0;
   run.raidsSent = 0;
+  run.chiefDead = false;
+  run.chiefHp = 1;
 }
 
 function showPerkChoice() {
@@ -7073,6 +7253,17 @@ function showPerkChoice() {
     unlock.style.color = 'var(--green)';
     unlock.textContent = T(`🔓 Nouveau dans l’atelier : {0}`, run.newUnlocks.join(', '));
   }
+  const spt = isStory() ? specialText() : null;
+  let special = null;
+  if (spt) {
+    special = document.createElement('p');
+    special.className = 'specialWave';
+    const b = document.createElement('b');
+    b.textContent = T('Vague {0}', run.wave) + ' · ' + spt.title;
+    const d = document.createElement('span');
+    d.textContent = spt.desc;
+    special.append(b, d);
+  }
   const grid = document.createElement('div');
   grid.className = 'perkChoices';
   for (const id of run.choice) {
@@ -7084,11 +7275,12 @@ function showPerkChoice() {
     btn.querySelector('.ico').textContent = p.icon;
     btn.querySelector('.pname').textContent = p.name;
     btn.querySelector('.pdesc').textContent = p.desc(n);
-    btn.querySelector('.pstack').textContent = p.max > 1 ? T(`Niveau {0} / {1}`, n, p.max) : '';
+    btn.querySelector('.pstack').textContent = p.late ? T('Niveau {0}', n) : p.max > 1 ? T(`Niveau {0} / {1}`, n, p.max) : '';
     btn.onclick = () => takePerk(id);
     grid.appendChild(btn);
   }
   modalBox.append(h, lead);
+  if (special) modalBox.append(special);
   if (unlock) modalBox.append(unlock);
   modalBox.append(grid);
   modal.classList.add('open');
@@ -7105,7 +7297,10 @@ function takePerk(id) {
   modal.classList.remove('open');
   paused = false;
   const p = PERKS.find(x => x.id === id);
-  banner(`${p.icon} ${p.name}`, isStory() ? T(`Vague {0} : écrase {1} insectes en {2} lancers`, run.wave, waveQuota(), waveLaunches()) : T(`Vague {0} : ça repart !`, run.wave));
+  const spb = isStory() ? specialText() : null;
+  if (spb && !state.tutos?.special) pendingTuto = 'special';
+  if (spb) banner(spb.title, spb.desc);
+  else banner(`${p.icon} ${p.name}`, isStory() ? T(`Vague {0} : écrase {1} insectes en {2} lancers`, run.wave, waveQuota(), waveLaunches()) : T(`Vague {0} : ça repart !`, run.wave));
   shopDirty = true;
   run.welcome = false;
   maybeShopGuide();
@@ -7214,7 +7409,7 @@ function applyToybox(run) {
   const d = metaLevel('depart');
   if (d) for (const id of ['endurance', 'puissance', 'diametre']) run.levels[id] = d;
   for (let i = 0; i < metaLevel('doudou'); i++) {
-    const pool = PERKS.filter(p => (!p.modes || p.modes.includes(run.mode)) && !run.perks[p.id]);
+    const pool = PERKS.filter(p => !p.late && (!p.modes || p.modes.includes(run.mode)) && !run.perks[p.id]);
     const p = pool[Math.floor(Math.random() * pool.length)];
     if (p) run.perks[p.id] = 1;
   }
@@ -7319,7 +7514,9 @@ function resumeRun() {
   paused = false;
   if (!aliveTops().length) refillBoard();
   if (stageIndex() > (run.stageSeen || 0)) { pendingMutation = true; return; }
-  if (isStory()) { banner(T(`📖 Vague {0}`, run.wave), T(`Écrase {0} insectes en {1} lancers`, waveQuota(), waveLaunches())); maybeLaunchTuto(); }
+  const spb = isStory() ? specialText() : null;
+  if (spb) banner(spb.title, spb.desc);
+  else if (isStory()) { banner(T(`📖 Vague {0}`, run.wave), T(`Écrase {0} insectes en {1} lancers`, waveQuota(), waveLaunches())); maybeLaunchTuto(); }
   else banner(T(`🍪 Mode Carnage — vague {0}`, run.wave), T('Protège ton goûter des cafards affamés (en rouge) !'));
 }
 
@@ -7691,6 +7888,8 @@ document.getElementById('toyReset').onclick = () => {
 //  aucun lien mort n'est jamais montré aux joueurs.
 //  Règle du jeu : donner ne débloque RIEN. Aucun bonus, aucun contenu réservé.
 // =====================================================================
+const SUPPORTERS = ['Ninken']; // pseudos des Tipeurs (contrepartie « Ton pseudo dans les crédits »)
+document.getElementById('crFans').textContent = SUPPORTERS.join(' · ');
 const SUPPORT_URL = 'https://fr.tipeee.com/toupie-cafards'; // ← ex. 'https://fr.tipeee.com/mon-pseudo'
 const SUPPORT_NAME = T('Louis'); // ← ex. 'Louis' ; vide = formulation neutre « une personne »
 (() => {
@@ -8465,7 +8664,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-23.1';
+const VERSION = '2026-11-23.2';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -9594,7 +9793,7 @@ function renderStats() {
   rows(isStory() ? T('Partie en cours (Histoire)') : T('Partie en cours (Carnage)'), [
     [T('Vague'), T(`{0} (record : {1})`, run.wave, state.best[run.mode])],
     ...(isStory()
-      ? [[T('Objectif de la vague'), T(`{0} / {1} insectes`, run.waveKills, waveQuota())], [T('Lancers restants'), `${run.launchesLeft} / ${waveLaunches()}`]]
+      ? [...(specialText() ? [[T('Vague spéciale'), specialText().title]] : []), [T('Objectif de la vague'), T(`{0} / {1} insectes`, run.waveKills, waveQuota())], [T('Lancers restants'), `${run.launchesLeft} / ${waveLaunches()}`]]
       : [[T('Goûter'), `${Math.max(0, run.snack)} / ${run.maxSnack} 🍪`], [T('Insectes affamés cette vague'), `${waveRaiders()}`]]),
     [T('Bonus'), Object.keys(run.perks).length ? Object.entries(run.perks).map(([id, n]) => PERKS.find(p => p.id === id).icon + (n > 1 ? '×' + n : '')).join(' ') : T('aucun')],
     [T('Insectes écrasés'), fmtInt(run.kills)],
@@ -9654,7 +9853,7 @@ function updateHud() {
   $('money').textContent = fmtMoney(state.run.cash);
   $('workshopMoney').textContent = fmtMoney(state.run.cash);
   $('killsLine').textContent = T(`{0} insecte{1} écrasé{2} · {3} lancer{4}`, fmtInt(run.kills), run.kills > 1 ? 's' : '', run.kills > 1 ? 's' : '', fmtInt(run.launches), run.launches > 1 ? 's' : '');
-  $('waveText').textContent = T(`{0} Vague {1}`, isStory() ? '📖' : '🍪', run.wave);
+  $('waveText').textContent = T(`{0} Vague {1}`, isStory() ? waveSpecial()?.icon || '📖' : '🍪', run.wave);
   if (run.daily) {
     const best = state.daily?.day === run.daily ? state.daily.best : 0;
     $('waveText').textContent = T('📅 Défi du jour');
@@ -9762,7 +9961,7 @@ function frame(now) {
     autoBtn.cap.material.emissive.setHex(on ? 0x1f9a35 : 0x400000);
     autoBtn.cap.material.emissiveIntensity = on ? 0.6 + 0.4 * Math.sin(performance.now() / 180) : 0.4;
   }
-  scene.environment = nest ? null : roomEnv; // dans le nid (rouge et sombre), pas de reflets de la pièce
+  scene.environment = nest || darkK > 0.3 ? null : roomEnv; // dans le nid (rouge et sombre), pas de reflets de la pièce
   desk.material.bumpScale = nest ? 0 : 0.0012; // ni les joints des lattes du bureau
   // Secousse de l'écran : on décale un instant la caméra le temps de dessiner l'image
   if (shake > 0.0002) {
@@ -9918,7 +10117,13 @@ function update(dt) {
   $('gaugeFill').style.width = (charging ? gaugeValue() : 0) * 100 + '%';
   animateTrampolines(dt);
   animateSparks(dt);
-  if (playing) { stepFlames(dt); stepVortex(dt); }
+  if (playing) { stepFlames(dt); stepVortex(dt); stepBooms(dt); }
+  stepSpecialLook(dt);
+  // Vague de chef : il tombe sur le bureau (et garde ses blessures si on quitte puis revient)
+  if (playing && !paused && waveSpecial()?.chief && !run.chiefDead) {
+    const c = bugs.find(b => b.chief && !b.gone && !b.dying);
+    if (c) run.chiefHp = c.hp / c.maxHp; else spawnChief();
+  }
   stepBolts(dt);
   launcherKick = Math.max(0, launcherKick - dt * 4);
   animateLauncher(dt);
@@ -9956,8 +10161,9 @@ function update(dt) {
       b.group.scale.set(s * (1 + squash * 0.5), s * (1 - squash), s * (1 + squash * 0.5));
     }
     b.legs.forEach((leg, k) => { leg.rotation.y = Math.sin(b.walk + k * Math.PI * 0.5 + (k % 2) * Math.PI) * 0.45; });
-    if (b.maxHp > 1 && b.hp < b.maxHp && !b.dying) {
+    if (b.maxHp > 1 && (b.hp < b.maxHp || b.chief) && !b.dying) {
       const w = Math.max(0.05, b.t.r * 2.2);
+      if (b.chief) b.hpBar.fill.material.color.setHex(0xff6a4a);
       b.hpBar.g.visible = true;
       b.hpBar.g.position.set(b.x, b.t.r * 0.9 + 0.02, b.z);
       b.hpBar.g.quaternion.copy(camQuat);
@@ -10118,7 +10324,7 @@ if (TEST_MODE === 'max') {
   state.tutos = new Proxy({}, { get: () => true });
   state.meta.items = Object.fromEntries(TOYBOX.map(t => [t.id, t.max]));
   for (const u of UPGRADES) if (!u.modes || u.modes.includes('histoire')) run.levels[u.id] = u.max;
-  run.perks = Object.fromEntries(PERKS.filter(p => !p.modes || p.modes.includes('histoire')).map(p => [p.id, p.max]));
+  run.perks = Object.fromEntries(PERKS.filter(p => !p.late && (!p.modes || p.modes.includes('histoire'))).map(p => [p.id, p.max]));
   const spider = BUG_TYPES.findIndex(t => t.stage === 2);
   run.infest = INFEST_THRESHOLDS[spider + 2] + 100;
   run.stageSeen = 2;
@@ -10145,6 +10351,7 @@ window.__dbg = {
   setQuota: (t, after) => { if (t) QUOTA_TABLE = t; if (after) QUOTA_AFTER = after; }, quotaAt, get QUOTA_TABLE() { return QUOTA_TABLE; }, get nest() { return nest; }, get qte() { return qte; }, qteResolve, endQte, startQte: id => startQte(QTE_PATTERNS.find(p => p.id === id)), setNestK: (k, p, pause, cap, cd) => { if (cap) NEST_HIT_CAP = cap; if (cd) NEST_TOP_CD = cd; NEST_HP_K = k; if (p !== undefined) NEST_PULL = p; if (pause) NEST_PAUSE = pause; }, get S() { return S; }, tops, bugs, update, launchTops, spawnBug, killBug, BUG_TYPES, bugType, webs, mutate, UPGRADES, PERKS, buy, costOf, infestLevel,
   refreshStats, camera, THREE, takePerk, restartRun, get paused() { return paused; }, endWave, makeTopMesh, makeBugMesh, scene, defeat,
   enterMode, openMenu, isReady, get introStep() { return introStep; }, get introCine() { return introCine; }, get HANDS() { return HANDS; }, startIntro, drawerBox, icContact, nextIntroLine, openPause, checkForUpdate,
+  waveSpecial, SPECIALS, specialText, spawnChief, refillBoard, startWave, setChief: (h, sh) => { CHIEF_HITS = h; if (sh) CHIEF_SHARE = sh; }, openCredits,
   upgradeLock, applyToybox, metaBalance, openToybox, rebuildToyDecor, waveQuota, TOYBOX, previewRoot, previewCam,
 };
 </script>
