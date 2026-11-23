@@ -448,6 +448,7 @@
   .crDot .pt { width: 14px; height: 14px; border-radius: 50%; background: #5a4a6a; border: 2px solid #9a8aaa; position: relative; z-index: 1; }
   .crDot.on { color: #ffd45a; font-weight: 800; }
   .crDot.on .pt { background: #ffd45a; border-color: #fff; transform: scale(1.3); }
+  @media (max-height: 700px) and (orientation: portrait) { #perksLine { display: none; } }
   .crFans b { color: #ffd45a; }
   .crThanks { font-size: 13px; color: #d9cbe6; line-height: 1.6; margin: 6px 0 2px; }
   .crBtns { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -1901,19 +1902,28 @@ const camera = new THREE.PerspectiveCamera(52, 1, 0.01, 10);
 // cx, cy : centre de la partie agrandie, en fraction de l'image d'origine. On ne sort jamais du cadre d'origine.
 const view = { zoom: 1, cx: 0.5, cy: 0.5 };
 const ZOOM_MAX = 3.5;
+// En portrait, l'image est descendue : le plateau se rapproche du bas (il n'y avait que du sol)
+// et le fond du bureau, avec l'écran et les podiums, apparaît sous le cadre du score.
+let viewShift = 0, viewShiftTo = 0, shiftEase = false;
+function stepViewShift(dt) {
+  if (viewShift === viewShiftTo || introCine || cine) return;
+  viewShift += (viewShiftTo - viewShift) * Math.min(1, dt * 4);
+  if (Math.abs(viewShift - viewShiftTo) < 0.5) viewShift = viewShiftTo;
+  applyView();
+}
 function applyView() {
   const W = container.clientWidth, H = container.clientHeight;
   view.zoom = Math.max(1, Math.min(ZOOM_MAX, view.zoom));
   if (view.zoom < 1.001 || !W || !H) {
     view.zoom = 1; view.cx = 0.5; view.cy = 0.5;
-    camera.clearViewOffset();
+    if (viewShift > 0.5) camera.setViewOffset(W, H, 0, -viewShift, W, H); else camera.clearViewOffset();
   } else {
     const w = W / view.zoom, h = H / view.zoom;
     const x = Math.max(0, Math.min(W - w, view.cx * W - w / 2));
     const y = Math.max(0, Math.min(H - h, view.cy * H - h / 2));
     view.cx = (x + w / 2) / W;
     view.cy = (y + h / 2) / H;
-    camera.setViewOffset(W, H, x, y, w, h);
+    camera.setViewOffset(W, H, x, y - viewShift, w, h);
   }
   camera.updateProjectionMatrix();
 }
@@ -1966,6 +1976,12 @@ function placeCamera() {
   lastCamDist = camDist;
   scene.fog.near = camDist + (nest ? 0.25 : 1);
   scene.fog.far = camDist + (nest ? 1.6 : 3.8);
+  {
+    const bottom = (1 - v.set(0, -0.04, 0.6).project(camera).y) / 2 * h;
+    viewShiftTo = nest || aspect >= 1.45 ? 0 : Math.max(0, Math.min(h * 0.3, h - (w <= 700 ? 118 : 40) - bottom));
+    viewShift = shiftEase ? 0 : viewShiftTo;
+    shiftEase = false;
+  }
   placePodiums();
   // Ce cadrage (tout le bureau visible) est la vue la plus large ; on y applique le zoom du joueur
   applyView();
@@ -7746,6 +7762,7 @@ function finishIntroCine() {
   cineEl.className = '';
   document.body.classList.remove('cine');
   launcher.visible = true;
+  shiftEase = true;
   placeCamera();
   endIntro();
 }
@@ -8158,7 +8175,7 @@ async function lbFetch() {
 // =====================================================================
 //  LES PODIUMS : posés sur le bureau, les trois meilleurs joueurs du monde en speedrun (trois marches et trois toupies)
 //  et en nombre de vagues (trois grandes vagues). Le premier porte une couronne.
-//  En paysage : de chaque côté du plateau. En portrait (pas de place sur les côtés) : sur une tablette, devant le plateau.
+//  En paysage : de chaque côté du plateau. En portrait (pas de place sur les côtés) : au fond, de chaque côté de l'écran d'ordinateur.
 // =====================================================================
 const MEDAL = [0xffc531, 0xd5dde6, 0xd58a4c], MEDAL_CSS = ['#ffc531', '#dbe3ec', '#e09a5c'];
 const PODIUM_KEY = 'toupie-cafards-podiums';
@@ -8170,8 +8187,8 @@ function fmtPodiumTime(t) {
 }
 function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 // La plaque : le titre, puis les trois pseudos en gros avec leur score
-function drawPlaque(g, kind, rows) {
-  const W = 1024, H = 560, speed = kind === 'speed', font = '"Segoe UI", system-ui, sans-serif';
+function drawPlaque(g, kind, rows, big = false) {
+  const W = 1024, H = big ? 720 : 560, rh = big ? 170 : 125, ry = big ? 246 : 212, fMax = big ? 124 : 88, fMin = big ? 60 : 50, fSc = big ? 82 : 68, speed = kind === 'speed', font = '"Segoe UI", system-ui, sans-serif';
   g.clearRect(0, 0, W, H);
   const bg = g.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, speed ? '#64161c' : '#0f4a86');
@@ -8203,27 +8220,28 @@ function drawPlaque(g, kind, rows) {
   }
   // Les trois rangs
   for (let i = 0; i < 3; i++) {
-    const e = rows[i], y = 212 + i * 125;
+    const e = rows[i], y = ry + i * rh;
     g.fillStyle = i === 0 ? 'rgba(255, 205, 70, .24)' : 'rgba(255,255,255,.07)';
-    roundRect(g, 44, y - 54, W - 88, 108, 26); g.fill();
+    roundRect(g, 44, y - rh / 2 + 8, W - 88, rh - 17, 26); g.fill();
     if (i === 0) { g.strokeStyle = 'rgba(255, 214, 90, .8)'; g.lineWidth = 4; g.stroke(); }
     g.fillStyle = MEDAL_CSS[i];
-    g.beginPath(); g.arc(108, y, 43, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(112, y, big ? 56 : 43, 0, Math.PI * 2); g.fill();
     g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 5; g.stroke();
-    g.fillStyle = '#3b2414'; g.textAlign = 'center'; g.font = '900 60px ' + font;
-    g.fillText(String(i + 1), 108, y + 3);
+    g.fillStyle = '#3b2414'; g.textAlign = 'center'; g.font = '900 ' + (big ? 78 : 60) + 'px ' + font;
+    g.fillText(String(i + 1), 112, y + 3);
+    const nx = big ? 186 : 176;
     const score = !e ? '' : speed ? fmtPodiumTime(e.time) : String(e.wave);
-    g.textAlign = 'right'; g.font = '800 68px ' + font; g.fillStyle = '#ffe9a8';
+    g.textAlign = 'right'; g.font = '800 ' + fSc + 'px ' + font; g.fillStyle = '#ffe9a8';
     g.fillText(score, W - 70, y + 3, 260);
-    const room = W - 70 - Math.min(260, g.measureText(score).width) - 30 - 176;
+    const room = W - 70 - Math.min(260, g.measureText(score).width) - 26 - nx;
     const name = e ? e.pseudo : i === 0 ? T('À toi de jouer !') : '…';
-    let fs = 88;
+    let fs = fMax;
     g.textAlign = 'left'; g.font = '800 ' + fs + 'px ' + font;
-    while (g.measureText(name).width > room && fs > 50) { fs -= 2; g.font = '800 ' + fs + 'px ' + font; }
+    while (g.measureText(name).width > room && fs > fMin) { fs -= 2; g.font = '800 ' + fs + 'px ' + font; }
     g.lineWidth = 9; g.strokeStyle = 'rgba(0,0,0,.55)';
-    g.strokeText(name, 176, y + 3, room);
+    g.strokeText(name, nx, y + 3, room);
     g.fillStyle = e && e.uid === state.lb?.uid ? '#8df59b' : i === 0 ? '#ffd95e' : '#ffffff';
-    g.fillText(name, 176, y + 3, room);
+    g.fillText(name, nx, y + 3, room);
   }
 }
 function podiumNumberTex(n) {
@@ -8311,7 +8329,8 @@ function buildWave(w, h, d) {
 }
 function buildPodium(kind) {
   const speed = kind === 'speed';
-  const g = new THREE.Group(), anim = { tops: [], waves: [], crown: null, kind };
+  const root = new THREE.Group(), g = new THREE.Group(), anim = { tops: [], waves: [], crown: null, kind };
+  root.add(g);
   const goldMat = new THREE.MeshStandardMaterial({ color: 0xf2bb3c, roughness: 0.25, metalness: 0.9, emissive: 0x4a2c00, emissiveIntensity: 0.4 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x2a160c, roughness: 0.35 });
   const box = (w, h, d, mat, x, y, z) => addMesh(new THREE.BoxGeometry(w, h, d), mat, x, y, z, g);
@@ -8379,21 +8398,35 @@ function buildPodium(kind) {
   pl.add(face);
   pl.rotation.x = 0.42;
   pl.position.set(0, 0.062, 0.118);
-  g.add(pl);
-  g.userData.anim = anim;
-  g.userData.draw = rows => { drawPlaque(c.getContext('2d'), kind, rows); tex.needsUpdate = true; };
-  g.userData.draw([]);
-  return g;
+  root.add(pl);
+  // Le meuble, sous les marches, quand le podium est au fond du bureau (portrait)
+  const stand = addMesh(new THREE.BoxGeometry(0.41, 0.1, 0.24), tableMat, 0, 0.05, -0.085, root);
+  addMesh(new THREE.BoxGeometry(0.418, 0.008, 0.248), goldMat, 0, 0.05, 0, stand);
+  const u = root.userData;
+  u.anim = anim;
+  u.rows = [];
+  u.big = null;
+  u.draw = rows => { u.rows = rows; drawPlaque(c.getContext('2d'), kind, rows, u.big); tex.needsUpdate = true; };
+  // big : plaque plus haute et plus droite, marches surélevées (podium au fond du bureau, petit à l'écran)
+  u.setBig = big => {
+    if (u.big === big) return;
+    u.big = big;
+    c.height = big ? 720 : 560;
+    tex.dispose();
+    stand.visible = big;
+    g.position.set(0, big ? 0.1 : 0, big ? -0.1 : 0);
+    pl.scale.z = big ? 720 / 560 : 1;
+    pl.rotation.x = big ? 0.85 : 0.42;
+    if (big) pl.position.set(0, 0.128, 0.088); else pl.position.set(0, 0.062, 0.118);
+    u.draw(u.rows);
+  };
+  u.setBig(false);
+  return root;
 }
 function buildPodiums() {
   const root = new THREE.Group();
   podiums = { root, speed: buildPodium('speed'), wave: buildPodium('wave'), t: 0, lastFetch: 0 };
-  // La tablette (en portrait seulement)
-  const tray = new THREE.Group();
-  addMesh(new THREE.BoxGeometry(1.3, 0.03, 0.56), tableMat, 0, -0.015, 0, tray);
-  addMesh(new THREE.BoxGeometry(1.31, 0.034, 0.016), new THREE.MeshStandardMaterial({ color: 0x5b3a1e, roughness: 0.6 }), 0, -0.015, 0.284, tray);
-  podiums.tray = tray;
-  root.add(podiums.speed, podiums.wave, tray);
+  root.add(podiums.speed, podiums.wave);
   scene.add(root);
   try { const old = JSON.parse(STORE.getItem(PODIUM_KEY) || 'null'); if (old) showPodiums(old); } catch { /* stockage bloqué */ }
   placePodiums();
@@ -8401,45 +8434,51 @@ function buildPodiums() {
 }
 function placePodiums() {
   if (!podiums) return;
+  const off = !!camera.view?.enabled;
+  if (off) camera.clearViewOffset();
   const v = new THREE.Vector3(), W = container.clientWidth, H = container.clientHeight;
   const proj = (x, y, z) => v.set(x, y, z).project(camera);
+  const py = (x, y, z) => (1 - proj(x, y, z).y) / 2 * H + viewShiftTo;
   // Le bord de l'écran, en mètres, à la profondeur z (au niveau de la table)
-  const edge = z => { const a = proj(0.7, TABLE_Y, z).x, b = proj(1.1, TABLE_Y, z).x; return 0.7 + (1 - a) * 0.4 / (b - a); };
+  const edge = z => { const a = proj(0.3, TABLE_Y, z).x, b = proj(0.8, TABLE_Y, z).x; return 0.3 + (1 - a) * 0.5 / (b - a); };
   const hud = document.getElementById('hud'), hudB = hud.classList.contains('tuto-objectif') ? podiums.hudB || 0 : hud.getBoundingClientRect().bottom;
   podiums.hudB = hudB;
   // Sur les côtés : là où la plaque paraît la plus grande, sans passer sous le cadre du score (en haut à gauche)
   let best = null;
-  for (let z = -0.3; z <= 0.36; z += 0.02) {
+  if (W / H >= 1.45) for (let z = -0.3; z <= 0.36; z += 0.02) {
     const e = edge(z + 0.2) - 0.018, k = Math.min(1, (Math.min(e, 1.17) - 0.738) / 0.432);
-    const y = (1 - proj(-0.95, TABLE_Y + 0.3 * k, z - 0.1 * k).y) / 2 * H;
-    if ((y > hudB + 4 || z > 0.35) && (!best || k / e > best.k / best.e)) best = { z, k, e };
+    if ((py(-0.95, TABLE_Y + 0.3 * k, z - 0.1 * k) > hudB + 4 || z > 0.35) && (!best || k / e > best.k / best.e)) best = { z, k, e };
   }
-  const side = best && best.k > 0.58;
-  podiums.side = side;
-  podiums.tray.visible = !side;
-  books.visible = true;
-  for (const p of [podiums.speed, podiums.wave]) p.userData.anim.lift = side ? 0.018 : 0.05; // couronne : plus haute vue de dessus
+  const side = podiums.side = !!best && best.k > 0.58;
+  for (const p of [podiums.speed, podiums.wave]) { p.userData.setBig(!side); p.userData.anim.lift = side ? 0.018 : 0.03; }
   if (side) {
     const x = 0.738 + 0.214 * best.k;
-    for (const [p, sx] of [[podiums.speed, -1], [podiums.wave, 1]]) { p.scale.setScalar(best.k); p.position.set(sx * x, TABLE_Y, best.z); p.rotation.y = 0; }
+    for (const [p, sx] of [[podiums.speed, -1], [podiums.wave, 1]]) { p.scale.setScalar(best.k); p.position.set(sx * x, TABLE_Y, best.z); }
   } else {
-    // Devant le plateau, aussi grand que possible sans sortir de l'écran (le message du bas reste lisible sur téléphone)
-    const low = -1 + (innerWidth <= 700 ? 58 : 24) / H * 2;
-    let k = 1.45;
-    const z = () => 0.69 + 0.1 * k;
-    while (k > 0.45 && (proj(0, TABLE_Y, z() + 0.235 * k).y < low || edge(z() + 0.2 * k) < 0.45 * k)) k -= 0.03;
-    const front = k > 0.45;
-    podiums.tray.visible = front;
-    if (!front) k = 0.74; // écran presque carré : au fond du bureau (à la place des livres)
-    books.visible = front;
-    podiums.tray.position.set(0, TABLE_Y - 0.004, z() + 0.065 * k);
-    podiums.tray.scale.set((0.9 * k + 0.12) / 1.3, 1, (0.33 * k + 0.05) / 0.56);
-    for (const [p, sx] of [[podiums.speed, -1], [podiums.wave, 1]]) { p.scale.setScalar(k); p.position.set(sx * (front ? 0.219 * k : 0.56), TABLE_Y, front ? z() : -1.07); p.rotation.y = 0; }
+    // Portrait : au fond du bureau, de chaque côté de l'écran d'ordinateur, le plus grand possible sous le cadre du score
+    const z = -1.1, e = Math.min(1.16, edge(z + 0.15) - 0.02), inner = 0.335;
+    let k = Math.min(1.5, (e - inner) / 0.424);
+    while (k > 0.6 && py(-0.6, TABLE_Y + 0.4 * k, z - 0.17 * k) < hudB + 2) k -= 0.02;
+    // Petit écran : on garde au moins toute la plaque visible (la couronne peut passer sous le cadre du score)
+    if (k < 1) {
+      let kp = Math.min(1.1, (e - inner) / 0.424);
+      while (kp > 0.7 && py(-0.6, TABLE_Y + 0.235 * kp, z - 0.02 * kp) < hudB + 2) kp -= 0.02;
+      if (kp > 0.7) k = Math.max(k, kp);
+    }
+    let x = (inner + e) / 2;
+    // Ou bien à droite du cadre du score, serrés contre l'écran (écrans presque carrés)
+    const hudR = hud.classList.contains('tuto-objectif') ? 224 : hud.getBoundingClientRect().right, px = X => (1 + proj(X, TABLE_Y, z + 0.16).x) / 2 * W;
+    let kb = Math.min(1.5, (e - inner) / 0.424);
+    while (kb > 0.4 && (px(-inner - 0.05 - 0.43 * kb) < hudR + 4 || py(-0.6, TABLE_Y + 0.4 * kb, z - 0.17 * kb) < 6)) kb -= 0.02;
+    if (kb > k || k <= 0.6) { k = kb; x = inner + 0.05 + 0.215 * kb; }
+    for (const [p, sx] of [[podiums.speed, -1], [podiums.wave, 1]]) { p.scale.setScalar(k); p.position.set(sx * x, TABLE_Y, z); }
   }
+  if (off) applyView();
 }
 function stepPodiums(dt) {
   if (!podiums) return;
   podiums.root.visible = !nest && !introCine && !cine;
+  if (!nest) books.visible = lampGroup.visible = plant.visible = podiums.side || !podiums.root.visible; // leur place est prise
   if (!podiums.root.visible) return;
   const t = (podiums.t += dt);
   if ((podiums.chk = (podiums.chk || 0) + dt) > 1.5) { // le cadre du score a grandi ou rétréci
@@ -8999,7 +9038,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-23.3';
+const VERSION = '2026-11-23.4';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -10290,6 +10329,7 @@ function frame(now) {
   updateCoach();
   if (introTop) animateIntroTop(dt);
   animateSteam(dt);
+  stepViewShift(dt);
   stepPodiums(dt);
   if (autoBtn) {
     const on = state.autoOn;
