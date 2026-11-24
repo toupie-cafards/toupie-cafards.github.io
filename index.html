@@ -4936,7 +4936,7 @@ function setGfx(level) {
 function applyGfx() { gfxScale = 1; const m = gfxMode(), GFX_HDR = GFX_OK && !gfxBroken; setGfx(m === 'beau' ? (GFX_HDR ? 2 : 1) : m === 'rapide' ? 0 : GFX_PHONE || !GFX_HDR ? 1 : 2); gfxWait = 3; gfxSlow = gfxN = 0; }
 // Mesure la fluidité pendant le jeu : moins de 45 images/s pendant 2 s → un cran plus léger
 function watchFps(dt) {
-  if (gfxMode() !== 'auto' || (!gfxLevel && gfxScale < 1) || dt > 1 || document.hidden || paused) return;
+  if (gfxMode() !== 'auto' || (!gfxLevel && gfxScale < 1) || dt > 0.8 || document.hidden || paused) return;
   if (gfxWait > 0) { gfxWait -= dt; return; }
   gfxSlow += dt; gfxN++;
   if (gfxSlow < 2) return;
