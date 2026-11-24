@@ -1613,7 +1613,7 @@ const TOYBOX = [
   { id: 'glu', icon: '🪤', name: T('Piège à glu'), max: 3, cost: n => 20 + 15 * n,
     desc: n => T('Chaque partie commence avec {0} piège{1} à glu sur le bureau : les insectes y avancent 4 fois moins vite.', n, n > 1 ? 's' : '') },
   { id: 'montre', icon: '⌚', name: T('Montre de grand-père'), max: 1, cost: () => 20,
-    desc: () => T('Ajoute un bouton ⏩ pour jouer en vitesse ×2 (les toupies, les cafards et les vagues vont deux fois plus vite).') },
+    desc: () => T('Ajoute un bouton ⏩ pour jouer en vitesse ×2 (les toupies, les cafards et les vagues vont deux fois plus vite). Attention : le chrono du speedrun tourne alors deux fois plus vite, lui aussi.') },
   // Pour après la mutation des cafards
   { id: 'loupe', icon: '🔬', name: T('Loupe de naturaliste'), max: 3, cost: n => 40 + 20 * n, mutant: true,
     desc: n => T(`🧬 On repère les points faibles des insectes : +{0} % de dégâts.`, 15 * n) },
@@ -1709,6 +1709,7 @@ function newRun(mode) {
     perks: {}, kills: 0, money: 0, traps: [], choice: null, over: false, lastReward: 0, lastSpare: 0,
     rescueUsed: false, wavesCleared: 0, stageSeen: 0,
     time: 0, timed: true, // chrono de la partie (speedrun), arrêté pendant les menus
+    clock2: true, // chrono compté double en vitesse ×2 (parties commencées depuis la v2026-11-24.3)
     // Histoire
     launchesLeft: WAVE_LAUNCHES, waveKills: 0, cleared: false,
     // Carnage
@@ -1802,7 +1803,9 @@ function load() {
     delete state.meta.items.punaises;
   }
   for (const m of ['histoire', 'carnage']) {
-    state.savedRuns[m] = Object.assign(newRun(m), state.savedRuns[m] || {}, { mode: m });
+    const old = state.savedRuns[m];
+    if (old && !old.clock2 && old.time > 0 && state.speedX2 && state.meta.items.montre) old.time *= 2; // commencée en ×2 avant que le chrono en tienne compte
+    state.savedRuns[m] = Object.assign(newRun(m), old || {}, { mode: m, clock2: true });
     // On ignore les bonus qui n'existent plus (ou pas dans ce mode)
     const run = state.savedRuns[m];
     if (!run.infest && run.kills) run.infest = run.kills; // anciennes parties : 1 point par insecte
@@ -9831,7 +9834,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-24.2';
+const VERSION = '2026-11-24.3';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -11113,10 +11116,11 @@ function frame(now) {
   slowT = Math.max(0, slowT - dt);
   if (!paused) update(dt * gameSpeed() * slow);
   else { hudTimer -= dt; if (hudTimer <= 0) { hudTimer = 0.2; updateHud(); } if (shopDirty) renderShop(); SFX.spin(0, 0); }
-  // Chrono du speedrun : le temps réel passé dans la partie (pas dans le menu ni la pause)
+  // Chrono du speedrun : le temps passé dans la partie (pas dans le menu ni la pause). En vitesse ×2 il court deux fois plus vite,
+  // sinon la montre diviserait tous les temps par deux. Il reste à ×1 quand rien ne tourne : choix d'un bonus, dialogue, atelier ouvert sans toupie en jeu.
   const run = state.run;
   if (run && run.timed && run.mode === 'histoire' && !run.over && !cr && !menuEl.classList.contains('open') && !pauseEl.classList.contains('open')
-    && document.visibilityState === 'visible') run.time = (run.time || 0) + dt;
+    && document.visibilityState === 'visible') run.time = (run.time || 0) + dt * (paused || (shopEl.classList.contains('open') && !aliveTops().length) ? 1 : gameSpeed());
   if (cine) stepCinematic(dt);
   if (introCine) stepIntroCine(dt);
   updateCoach();
@@ -11532,7 +11536,7 @@ if (freshPlayer) {
 requestAnimationFrame(frame);
 
 // Accès pour les tests (lecture des stats et avance du temps)
-window.__dbg = {
+if (TEST_MODE || /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) window.__dbg = { // pas dans le vrai jeu : trop facile de tricher
   state, SFX, lbAuth, lbSubmit, lbFetch, startNest, LATE, buildLauncher, launcher, get charging() { return charging; }, setCharging: v => { charging = v; chargeT = v ? 0.5 : 0; }, setTired: v => { TOP_TIRED = v; },
   setQuota: (t, after) => { if (t) QUOTA_TABLE = t; if (after) QUOTA_AFTER = after; }, quotaAt, get QUOTA_TABLE() { return QUOTA_TABLE; }, get nest() { return nest; }, get qte() { return qte; }, qteResolve, endQte, startQte: id => startQte(QTE_PATTERNS.find(p => p.id === id)), setNestK: (k, p, pause, cap, cd) => { if (cap) NEST_HIT_CAP = cap; if (cd) NEST_TOP_CD = cd; NEST_HP_K = k; if (p !== undefined) NEST_PULL = p; if (pause) NEST_PAUSE = pause; }, get S() { return S; }, tops, bugs, update, launchTops, spawnBug, killBug, BUG_TYPES, bugType, webs, mutate, UPGRADES, PERKS, buy, costOf, infestLevel,
   refreshStats, camera, THREE, takePerk, restartRun, get paused() { return paused; }, endWave, makeTopMesh, makeBugMesh, scene, defeat,
