@@ -1036,4 +1036,5 @@ export const I18N = {
 "SPEEDRUN": ["SPEEDRUN","SPEEDRUN","SPEEDRUN"],
 "RECORD DE VAGUES": ["WAVE RECORD","RÉCORD DE OLEADAS","WELLENREKORD"],
 "À toi de jouer !": ["Your turn!","¡Te toca!","Du bist dran!"],
+"Le jeu est ouvert dans un autre onglet. Ta partie y est bien enregistrée.": ["The game is open in another tab. Your progress is saved there.","El juego está abierto en otra pestaña. Tu partida está guardada allí.","Das Spiel ist in einem anderen Tab geöffnet. Dein Fortschritt ist dort gespeichert."],
 };

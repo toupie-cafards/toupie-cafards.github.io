@@ -546,6 +546,10 @@
     padding: 10px 16px; border: 0; border-radius: 12px; background: var(--green); color: #10251a; font: inherit; font-weight: 800;
     cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,.5); }
   #updateBar.show { display: block; }
+  #otherTab { position: fixed; inset: 0; z-index: 200; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px;
+    background: rgba(8, 6, 4, 0.88); color: #fff; text-align: center; font-size: 18px; }
+  #otherTab.show { display: flex; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; }
+  #otherTab p { margin: 0; max-width: 460px; line-height: 1.4; }
   .menuBox { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; text-align: center; }
   .menuBox h1 { margin: 0; font-size: clamp(28px, 7vw, 44px); line-height: 1.1; text-shadow: 0 3px 0 #7a3d00; }
   .menuBox .tag { color: var(--muted); margin: 6px 0 18px; }
@@ -723,7 +727,7 @@
   #cineSub.on { opacity: 1; }
   #cineSkip { position: absolute; top: calc(10vh + 10px); right: 12px; padding: 8px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,.35);
     background: rgba(0,0,0,.45); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
-  body.cine > :not(#game):not(#cine):not(script) { visibility: hidden !important; }
+  body.cine > :not(#game):not(#cine):not(#otherTab):not(script) { visibility: hidden !important; }
 
   /* Écrans à encoche (application, iPhone) : le plateau va jusqu'au bord, mais les boutons et panneaux restent dans la zone sûre */
   #hud { top: calc(10px + env(safe-area-inset-top, 0px)); left: calc(10px + env(safe-area-inset-left, 0px)); }
@@ -953,6 +957,7 @@
 
 <div id="dialog"><div class="face">😩</div><div><div class="who">Moi</div><div class="line" id="dialogLine"></div><div class="next">▶ Touche pour continuer</div></div></div>
 <div id="cine"><div class="lb t"></div><div class="lb b"></div><div class="lid t"></div><div class="lid b"></div><div class="fade"></div><div id="cineSub"></div><button id="cineSkip">Passer ⏭</button></div>
+<div id="otherTab"><p></p><button class="bigBtn"></button></div>
 <button class="linkBtn" id="skipIntro">Passer ⏭</button>
 
 <script>
@@ -1730,9 +1735,40 @@ const state = {
   run: null,
 };
 const PERSISTED = ['totalMoney', 'kills', 'launches', 'bestCombo', 'killsByType', 'mode', 'introSeen', 'tutos', 'best', 'games', 'savedRuns', 'meta', 'speedX2', 'achievements', 'settings', 'maxStage', 'perfectBest', 'bestRunMoney', 'goldenKills', 'chiefKills', 'pseudo', 'lb', 'nestWins', 'autoOn', 'shareRewarded', 'daily', 'demoDone'];
+// Protection de la sauvegarde :
+//  - un seul onglet enregistre (le dernier ouvert) ; sinon, fermer un vieil onglet remettait l'ancienne partie ;
+//  - une copie de secours : l'argent gagné en tout ne baisse jamais, donc une sauvegarde qui en a moins que la copie a été écrasée ou abîmée.
+const TAB_KEY = SAVE_KEY + '-onglet', BACKUP_KEY = SAVE_KEY + '-secours', TAB_ID = Math.random().toString(36).slice(2);
+const KEEP_BACKUP = !ON_CG && !TEST_MODE; // CrazyGames : sauvegarde en ligne, gérée par le portail
+let otherTab = false, backupT = 0;
+function claimTab() { try { localStorage.setItem(TAB_KEY, TAB_ID); } catch { /* stockage bloqué */ } }
+function tabLost() {
+  if (otherTab) return true;
+  try { const id = localStorage.getItem(TAB_KEY); otherTab = !!id && id !== TAB_ID; } catch { /* stockage bloqué */ }
+  if (otherTab) setTimeout(showOtherTab, 0);
+  return otherTab;
+}
+function showOtherTab() {
+  paused = true;
+  SFX.suspend(true);
+  const el = document.getElementById('otherTab');
+  el.querySelector('p').textContent = T('Le jeu est ouvert dans un autre onglet. Ta partie y est bien enregistrée.');
+  const b = el.querySelector('button');
+  b.textContent = T('▶ Reprendre');
+  b.onclick = () => location.reload();
+  el.classList.add('show');
+}
+function readSave() {
+  const read = k => { try { const d = JSON.parse(STORE.getItem(k)); return d && typeof d === 'object' ? d : null; } catch { return null; } };
+  const main = read(SAVE_KEY);
+  if (!KEEP_BACKUP) return main;
+  const copy = read(BACKUP_KEY);
+  return copy && (!main || (copy.totalMoney || 0) > (main.totalMoney || 0)) ? copy : main;
+}
 function load() {
+  claimTab();
   try {
-    const data = JSON.parse(STORE.getItem(SAVE_KEY));
+    const data = readSave();
     if (data && typeof data === 'object') {
       for (const k of PERSISTED) if (k in data) state[k] = data[k];
       // Anciennes sauvegardes (avant les deux modes)
@@ -1782,10 +1818,14 @@ function load() {
 }
 let resetting = false; // pendant une remise à zéro, on n'enregistre plus rien
 function save() {
-  if (resetting) return;
+  if (resetting || tabLost()) return;
   const out = {};
   for (const k of PERSISTED) out[k] = state[k];
-  try { STORE.setItem(SAVE_KEY, JSON.stringify(out)); } catch { /* stockage indisponible */ }
+  try {
+    const txt = JSON.stringify(out);
+    STORE.setItem(SAVE_KEY, txt);
+    if (KEEP_BACKUP && Date.now() - backupT > 60000) { backupT = Date.now(); STORE.setItem(BACKUP_KEY, txt); }
+  } catch { /* stockage indisponible */ }
 }
 load();
 
@@ -8657,7 +8697,7 @@ document.getElementById('toyReset').onclick = () => {
 //  aucun lien mort n'est jamais montré aux joueurs.
 //  Règle du jeu : donner ne débloque RIEN. Aucun bonus, aucun contenu réservé.
 // =====================================================================
-const SUPPORTERS = ['Ninken']; // pseudos des Tipeurs (contrepartie « Ton pseudo dans les crédits »)
+const SUPPORTERS = ['Ninken', 'Hakou238']; // pseudos des Tipeurs (contrepartie « Ton pseudo dans les crédits »)
 document.getElementById('crFans').textContent = SUPPORTERS.join(' · ');
 const SUPPORT_URL = 'https://fr.tipeee.com/toupie-cafards'; // ← ex. 'https://fr.tipeee.com/mon-pseudo'
 const SUPPORT_NAME = T('Louis'); // ← ex. 'Louis' ; vide = formulation neutre « une personne »
@@ -9536,6 +9576,7 @@ function importSave(code) {
   if (obj.game !== 'toupie-cafards' || !obj.data || typeof obj.data !== 'object') throw new Error(T('Code abîmé ou incomplet.'));
   resetting = true;   // la sauvegarde automatique ne doit pas écraser ce qu'on charge
   STORE.setItem(SAVE_KEY, JSON.stringify(obj.data));
+  try { STORE.removeItem(BACKUP_KEY); } catch { /* stockage bloqué */ }
   location.reload();
 }
 const pseudoInput = document.getElementById('pseudoInput');
@@ -9790,7 +9831,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-24.1';
+const VERSION = '2026-11-24.2';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
@@ -10967,7 +11008,7 @@ function renderStats() {
   reset.onclick = () => {
     if (!armed) { armed = true; reset.textContent = T('Sûr ? Touche encore pour tout effacer'); setTimeout(() => { armed = false; reset.textContent = T('Recommencer à zéro'); }, 3000); return; }
     resetting = true;
-    try { STORE.removeItem(SAVE_KEY); } catch {}
+    try { STORE.removeItem(SAVE_KEY); STORE.removeItem(BACKUP_KEY); } catch {}
     location.reload();
   };
   shopList.appendChild(reset);
@@ -11363,6 +11404,9 @@ window.addEventListener('orientationchange', onScreenResize);
 window.visualViewport?.addEventListener('resize', onScreenResize);
 if (window.ResizeObserver) new ResizeObserver(() => placeCamera()).observe(container);
 window.addEventListener('pagehide', save);
+window.addEventListener('storage', e => { if (e.key === TAB_KEY && !resetting) tabLost(); });
+// On demande au navigateur de ne pas effacer la sauvegarde quand il manque de place
+try { navigator.storage?.persist?.().catch(() => {}); } catch { /* pas disponible */ }
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     save();
@@ -11370,7 +11414,7 @@ document.addEventListener('visibilitychange', () => {
     // Une partie en cours se met en pause (sauf pendant un défi du nid ou la cinématique, qui sont déjà figés)
     if (state.run && !menuEl.classList.contains('open') && !pauseEl.classList.contains('open') && !modal.classList.contains('open')
       && !qte && !cine && introStep < 0) openPause();
-  } else SFX.suspend(false);
+  } else if (!tabLost()) SFX.suspend(false);
 });
 // Le bouton « retour » d'Android : ferme la fenêtre ouverte, sinon met en pause ; depuis le menu, quitte l'application
 function onBackButton() {
