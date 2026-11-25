@@ -892,6 +892,10 @@
       <div class="mt">▶ Reprendre</div>
       <div class="md">Retourner sur le bureau, là où tu en étais.</div>
     </button>
+    <button class="modeBtn" id="toMenuBtn">
+      <div class="mt">💾 Menu principal</div>
+      <div class="md">Ta partie est gardée : tu la reprendras avec « Continuer ».</div>
+    </button>
     <button class="modeBtn" id="restartBtn">
       <div class="mt">🔁 Recommencer la partie</div>
       <div class="md" id="restartDesc">Repartir de la vague 1. Tout repart de zéro : argent, améliorations et infestation. Tes vagues repoussées restent dans le Carton à Jouets.</div>
@@ -8283,7 +8287,7 @@ function openMenu() {
   if (DEMO && !TEST_MODE) document.querySelector('#menu .tag').textContent = T('Démo gratuite : repousse les cafards jusqu’à leur mutation !');
   renderDefi();
   renderDailyBtn();
-  document.getElementById('replayIntro').style.display = state.introSeen ? '' : 'none';
+  document.getElementById('replayIntro').style.display = state.introSeen && !aliveTops().length ? '' : 'none'; // pas pendant un lancer gardé en pause
   openMenuRefresh();
   menuEl.classList.add('open');
 }
@@ -9758,6 +9762,8 @@ function openPause() {
   rd.dataset.base ??= rd.textContent; qd.dataset.base ??= qd.textContent;
   rd.textContent = run.daily ? T('Recommencer le défi du jour depuis le premier lancer (ton record du jour est gardé).') : rd.dataset.base;
   qd.textContent = run.daily ? T('Abandonner cet essai et retourner au menu.') : qd.dataset.base;
+  // Pas de « partie gardée » pour un défi, une partie perdue, ou une fenêtre qu'on ne saurait pas rouvrir (seul le choix d'un bonus est enregistré)
+  document.getElementById('toMenuBtn').style.display = run.daily || run.over || nest?.over || (modal.classList.contains('open') && !run.choice) ? 'none' : '';
   disarmRestart();
   pauseEl.classList.add('open');
 }
@@ -9781,6 +9787,14 @@ document.getElementById('resumeBtn').onclick = () => {
   pauseEl.classList.remove('open');
   // Si une fenêtre (choix de bonus, défaite) était ouverte, le jeu reste en pause derrière elle
   paused = modal.classList.contains('open');
+};
+// Retour au menu sans rien perdre. Dans le nid, on en ressort : on peut y retourner gratuitement depuis l'atelier
+document.getElementById('toMenuBtn').onclick = () => {
+  pauseEl.classList.remove('open');
+  shopEl.classList.remove('open');
+  if (nest) leaveNest();
+  save();
+  openMenu();
 };
 restartBtn.onclick = () => {
   if (!restartArmed) {
@@ -9834,7 +9848,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-24.3';
+const VERSION = '2026-11-25.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
