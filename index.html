@@ -598,6 +598,7 @@
     border-radius: 14px; border: 1px solid rgba(255,255,255,.14); background: rgba(36, 27, 20, .95); color: var(--text); font: inherit; cursor: pointer;
     text-decoration: none; transition: transform .1s, border-color .1s; }
   .mIco:hover, .mIco:focus-visible { border-color: var(--gold); transform: translateY(-2px); outline: none; }
+  .mIco.locked, .mIco.locked:hover { opacity: .45; filter: grayscale(1); cursor: not-allowed; border-color: rgba(255,255,255,.14); transform: none; }
   .mIco .mi-i { font-size: 26px; line-height: 1; }
   .mIco .mi-l { font-size: 10.5px; font-weight: 800; color: var(--muted); line-height: 1.15; letter-spacing: -0.01em; }
   .mIco .mi-b { position: absolute; top: -6px; right: -4px; min-width: 20px; padding: 2px 6px; border-radius: 999px; font-size: 11px; font-weight: 900;
@@ -8278,7 +8279,7 @@ function openMenu() {
   modal.classList.remove('open');
   {
     const run = state.savedRuns.histoire, best = state.best.histoire || 1;
-    const going = (run.wave > 1 || run.kills > 0) && !run.over;
+    const going = runStarted(run);
     document.getElementById('playLabel').textContent = going ? T('▶ Continuer') : T('▶ Jouer');
     document.getElementById('storyRecord').textContent = going ? T('Vague {0}', run.wave) + ' · ' + T('Record : vague {0}', best)
       : best > 1 ? T('Record : vague {0}', best) : '';
@@ -8612,7 +8613,24 @@ document.getElementById('replayIntro').onclick = () => enterMode('histoire', { f
 
 // Le Carton à Jouets : boutique permanente entre les parties
 const toyboxEl = document.getElementById('toybox');
-function openToybox() { toyResetArmed = false; renderToybox(); toyboxEl.classList.add('open'); }
+// Le Carton ne se touche qu'entre deux parties (la fin de la démo compte comme une fin de partie)
+function runStarted(run = state.savedRuns.histoire) { return !run.over && (run.wave > 1 || run.launches > 0 || run.kills > 0); }
+function toyboxLocked() { return runStarted() && !(modal.classList.contains('open') && modalBox.classList.contains('demoEnd')); }
+function openToybox() {
+  if (toyboxLocked()) { SFX.play('boing'); showToast(T('📦 Une partie est en cours<small>Le Carton à Jouets s’ouvre entre deux parties.</small>')); return; }
+  toyResetArmed = false;
+  renderToybox();
+  toyboxEl.classList.add('open');
+}
+// Partie toute neuve (aucun lancer) : on la refait pour qu'elle parte avec le nouveau contenu du Carton
+function toyboxChanged() {
+  if (state.run.daily || state.run.over || runStarted()) return;
+  clearBoard();
+  state.run = state.savedRuns[state.mode] = newRun(state.mode);
+  rebuildTraps();
+  updateLauncherSkin();
+  previewDirty = true;
+}
 function renderToybox() {
   renderToyReset();
   document.getElementById('toyBalance').textContent = T(`🌊 {0} vague{1} à dépenser · {2} repoussée{3} au total`, metaBalance(), metaBalance() > 1 ? 's' : '', state.meta.earned, state.meta.earned > 1 ? 's' : '');
@@ -8634,17 +8652,17 @@ function renderToybox() {
     btn.textContent = demoLock ? T('🔒 Jeu complet') : maxed ? (t.max > 1 ? 'MAX' : '✔') : `${cost} 🌊`;
     btn.disabled = demoLock || maxed || metaBalance() < cost;
     btn.onclick = () => {
-      if (demoLock || maxed || metaBalance() < cost) return;
+      if (demoLock || maxed || metaBalance() < cost || toyboxLocked()) return;
       state.meta.spent += cost;
       SFX.play('buy');
       state.meta.items[t.id] = n + 1;
       rebuildToyDecor();
       if (t.id === 'montre') updateSpeedBtn();
-      if (t.id === 'glu' && !state.run.daily && !state.run.over) addTrap(); // le nouveau piège est posé tout de suite
+      toyboxChanged();
       refreshStats();
       shopDirty = true;
       save();
-      banner(`${t.icon} ${t.name}`, T('Effet dès la prochaine partie') + (['catalogue', 'carte', 'secours', 'loupe', 'chimiste', 'gants', 'trophee', 'glu'].includes(t.id) ? T(' (et déjà maintenant)') : ''));
+      banner(`${t.icon} ${t.name}`, T('Effet dès la prochaine partie'));
       renderToybox();
       openMenuRefresh();
     };
@@ -8657,8 +8675,12 @@ function openMenuRefresh() {
   const runWaves = ['histoire', 'carnage'].reduce((a, m) => a + (state.savedRuns[m].metaGain ?? state.savedRuns[m].wavesCleared), 0);
   const tb = document.getElementById('toyboxBalance'), bal = metaBalance();
   tb.textContent = bal > 0 ? '🌊 ' + bal : '';
-  tb.classList.toggle('hot', bal > 0);
-  document.getElementById('toyboxBtn').title = T(`🌊 {0} à dépenser`, bal) + (runWaves ? T(` · dont {0} gagnée{1} dans tes parties en cours`, runWaves, runWaves > 1 ? 's' : '') : '');
+  const locked = toyboxLocked(), tbtn = document.getElementById('toyboxBtn');
+  tb.classList.toggle('hot', bal > 0 && !locked);
+  tbtn.classList.toggle('locked', locked);
+  tbtn.setAttribute('aria-disabled', locked);
+  tbtn.querySelector('.mi-l').textContent = locked ? T('Partie en cours') : T('Carton');
+  tbtn.title = locked ? T('Une partie est en cours') : T(`🌊 {0} à dépenser`, bal) + (runWaves ? T(` · dont {0} gagnée{1} dans tes parties en cours`, runWaves, runWaves > 1 ? 's' : '') : '');
   shopDirty = true;
 }
 document.getElementById('toyboxBtn').onclick = openToybox;
@@ -8670,7 +8692,7 @@ function renderToyReset() {
   b.disabled = !state.meta.spent;
 }
 document.getElementById('toyReset').onclick = () => {
-  if (!state.meta.spent) return;
+  if (!state.meta.spent || toyboxLocked()) return;
   if (!toyResetArmed) {
     toyResetArmed = true;
     renderToyReset();
@@ -8690,6 +8712,8 @@ document.getElementById('toyReset').onclick = () => {
   renderToybox();
   openMenuRefresh();
   SFX.play('buy');
+  toyboxChanged();
+  refreshStats();
   banner(T('📦 Carton vidé'), T(`{0} 🌊 récupérées : tu peux repartir de zéro`, back));
 };
 // =====================================================================
@@ -9848,7 +9872,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-25.1';
+const VERSION = '2026-11-25.2';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
