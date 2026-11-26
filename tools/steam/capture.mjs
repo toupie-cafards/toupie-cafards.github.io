@@ -16,6 +16,11 @@ const W = 1920, H = 1080, PORT = 9333 + (LANG === 'fr' ? 1 : 0);
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'toupie-steam-'));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Podiums du bureau : les vrais podiums de la saison 1 (au début de la saison 2, ils sont vides)
+const PODIUMS = `(() => { const t = 1; window.__dbg.showPodiums({
+  speed: [{ pseudo: "hakou238", time: 945, t }, { pseudo: "Ninken", time: 1386, t }, { pseudo: "MightyTwister92", time: 2380, t }],
+  wave: [{ pseudo: "Loudy", wave: 104, t }, { pseudo: "Luuna", wave: 99, t }, { pseudo: "hakou238", wave: 71, t }] }); return 1; })()`;
+
 // Préparation commune : pas d'intro, pas de tutoriels, langue choisie
 const PREP = `(async () => {
   const W = ms => new Promise(r => setTimeout(r, ms));
@@ -106,6 +111,8 @@ try {
     await sleep(2500);
     await evaluate(PREP);
     await evaluate(sc.js);
+    await evaluate(PODIUMS);
+    await sleep(500);
     const shot = await send('Page.captureScreenshot', { format: 'png' });
     const file = path.join(OUT, `${name}.png`);
     fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
