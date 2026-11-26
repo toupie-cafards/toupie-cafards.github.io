@@ -1,0 +1,122 @@
+{
+  "rules": {
+    "leaderboard": {
+      "histoire": {
+        ".read": true,
+        ".write": false,
+        ".indexOn": [
+          "wave"
+        ]
+      },
+      "speedrun": {
+        ".read": true,
+        ".write": false,
+        ".indexOn": [
+          "time"
+        ]
+      },
+      "saison2": {
+        "histoire": {
+          ".read": true,
+          ".indexOn": [
+            "wave"
+          ],
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['pseudo', 'wave', 't']) && (!data.exists() || newData.child('wave').val() >= data.child('wave').val())",
+            "pseudo": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+            },
+            "wave": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 2 && newData.val() <= 200"
+            },
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() <= now + 86400000 && newData.val() >= now - 86400000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "speedrun": {
+          ".read": true,
+          ".indexOn": [
+            "time"
+          ],
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['pseudo', 'time', 't']) && (!data.exists() || newData.child('time').val() <= data.child('time').val())",
+            "pseudo": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+            },
+            "time": {
+              ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1500 && newData.val() <= 360000"
+            },
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() <= now + 86400000 && newData.val() >= now - 86400000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      },
+      "jour": {
+        ".read": true,
+        "$day": {
+          ".indexOn": [
+            "score"
+          ],
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && $day.matches(/^20[0-9][0-9]-[01][0-9]-[0-3][0-9]$/)",
+            ".validate": "newData.hasChildren(['pseudo', 'score', 't']) && (!data.exists() || newData.child('score').val() >= data.child('score').val())",
+            "pseudo": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 16"
+            },
+            "score": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000"
+            },
+            "t": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    },
+    "stats": {
+      ".read": true,
+      "j": {
+        "$day": {
+          "$pid": {
+            ".write": "newData.exists() && $day.matches(/^20[0-9][0-9]-[01][0-9]-[0-3][0-9]$/) && $pid.matches(/^[a-z0-9]{12}$/)",
+            ".validate": "newData.hasChildren(['s', 'w'])",
+            "s": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12"
+            },
+            "w": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 300"
+            },
+            "n": {
+              ".validate": "newData.val() === 1"
+            },
+            "d": {
+              ".validate": "newData.val() === 1"
+            },
+            "r": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "e": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        }
+      }
+    }
+  }
+}

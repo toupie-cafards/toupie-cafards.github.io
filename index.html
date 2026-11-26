@@ -463,6 +463,9 @@
   .lbRow.top1 .rk { color: #ffd45a; font-size: 20px; } .lbRow.top2 .rk { color: #d8dde3; font-size: 18px; } .lbRow.top3 .rk { color: #d08a4a; font-size: 17px; }
   .lbRow.me { background: linear-gradient(135deg, #4a3a10, #2a2008); border: 1px solid #ffd45a; }
   .lbRow .wv { color: #7fd1ff; white-space: nowrap; }
+  #lbLegends { text-align: left; margin: 0 0 12px; opacity: .8; }
+  #lbLegends p { text-align: center; color: var(--muted); font-size: 13px; font-weight: 700; margin: 4px 0 6px; }
+  #lbLegends .lbRow { padding: 5px 12px; margin-bottom: 3px; font-size: 14px; }
   /* Défi du jour */
   .modeBtn.dailyBtn { border-color: rgba(108,178,255,.65); background: linear-gradient(135deg, rgba(48,86,150,.55), rgba(30,22,16,.92)); }
   .modeBtn.dailyBtn.pulse { animation: dailyPulse 1.3s ease-in-out infinite; }
@@ -933,6 +936,7 @@
     <p class="tag" id="lbSub">Mode Histoire · meilleure vague atteinte</p>
     <div id="lbList"></div>
     <p class="tag" id="lbMsg"></p>
+    <div id="lbLegends"></div>
     <button class="bigBtn" id="lbClose">Fermer</button>
   </div>
 </div>
@@ -7619,6 +7623,7 @@ function nestVictory() {
   const time = run.time || 0;
   const record = run.timed && !TEST_MODE && (!state.best.speedrun || time < state.best.speedrun);
   if (record) state.best.speedrun = time;
+  if (run.timed && !TEST_MODE) { const lb = lbSeason(); if (!lb.speed || time < lb.speed) lb.speed = time; }
   run.timed = false; // le chrono s'arrête
   save();
   lbSubmitSpeed();
@@ -8004,6 +8009,7 @@ function endWave() {
   }
   checkDefiWave(run);
   if (run.mode === 'histoire' && (run.wave <= 5 || run.wave % 5 === 0)) statsSend(run.wave); // vagues 1 à 5, puis toutes les 5
+  if (run.mode === 'histoire' && !run.daily) { const lb = lbSeason(); if (run.wave > (lb.wave || 1)) lb.wave = run.wave; }
   if (run.wave > state.best[run.mode]) {
     // Nouveau record (une seule annonce par partie, et pas pour les toutes premières vagues)
     if (!run.recordShown && state.best[run.mode] >= 5) run.newRecord = run.recordShown = true;
@@ -8852,6 +8858,21 @@ document.getElementById('defiNote').onclick = () => { if (defi && defi.done && !
 
 const LB_CONFIG = { apiKey: 'AIzaSyA8PL7hfbqEkHbw9_t4Jj2s8aAgBfZBSfc', dbURL: 'https://toupie-cafards-default-rtdb.europe-west1.firebasedatabase.app' };
 const lbReady = () => !!(LB_CONFIG.apiKey && LB_CONFIG.dbURL);
+// Saisons du classement (vagues et speedrun ; le défi du jour n'est pas concerné). Saison 2 depuis le 26/11/2026 : tout le monde
+// repart de zéro, car les anciens records dataient d'avant l'équilibrage (vagues) ou du chrono qui ne comptait pas le ×2 (speedrun).
+// Chaque joueur a son record de saison dans state.lb (wave, speed), à part de ses records personnels (state.best).
+const LB_SEASON = 2, LB_PATH = '/leaderboard/saison2';
+const LB_LEGENDS = { wave: [['Loudy', 104], ['Luuna', 99], ['hakou238', 71]], speed: [['hakou238', 945], ['Ninken', 1386], ['MightyTwister92', 2380]] };
+function lbSeason() {
+  const lb = state.lb = state.lb || {};
+  if (lb.season !== LB_SEASON) {
+    const r = state.savedRuns?.histoire, had = (lb.sent || 0) >= 2 || !!lb.sentSpeed;
+    // La partie en cours compte : elle se joue déjà avec les règles d'aujourd'hui
+    Object.assign(lb, { season: LB_SEASON, sent: 0, sentPseudo: '', sentSpeed: 0, sentSpeedPseudo: '', speed: 0,
+      wave: r && !r.over && !r.daily ? r.wave || 1 : 1, seasonNews: had });
+  }
+  return lb;
+}
 let lbToken = null, lbTokenExp = 0;
 async function lbAuth() {
   if (lbToken && Date.now() < lbTokenExp - 60000) return lbToken;
@@ -8951,13 +8972,13 @@ let lbSending = false;
 async function lbSubmit(force = false) {
   if (!lbReady() || lbSending || TEST_MODE) return; // une session de test ne compte pas au classement
   const pseudo = (state.pseudo || '').trim();
-  const best = state.best.histoire || 1;
+  const best = lbSeason().wave || 1;
   if (!pseudo || best < 2) return;
   if (!force && state.lb?.sent >= best && state.lb?.sentPseudo === pseudo) return;
   lbSending = true;
   try {
     const token = await lbAuth();
-    const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/histoire/${state.lb.uid}.json?auth=${token}`, {
+    const r = await fetch(`${LB_CONFIG.dbURL}${LB_PATH}/histoire/${state.lb.uid}.json?auth=${token}`, {
       method: 'PUT', body: JSON.stringify({ pseudo: pseudo.slice(0, 16), wave: best, t: Date.now() }),
     });
     if (r.ok) { state.lb.sent = best; state.lb.sentPseudo = pseudo; save(); refreshPodiums(true); }
@@ -8967,26 +8988,26 @@ async function lbSubmit(force = false) {
 // Envoie le meilleur temps de speedrun (seulement s'il s'est amélioré, ou si le pseudo a changé)
 async function lbSubmitSpeed(force = false) {
   if (!lbReady() || TEST_MODE) return;
-  const pseudo = (state.pseudo || '').trim(), best = state.best.speedrun;
+  const pseudo = (state.pseudo || '').trim(), best = lbSeason().speed;
   if (!pseudo || !best) return;
   if (!force && state.lb?.sentSpeed && state.lb.sentSpeed <= best && state.lb.sentSpeedPseudo === pseudo) return;
   try {
     const token = await lbAuth();
-    const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/speedrun/${state.lb.uid}.json?auth=${token}`, {
+    const r = await fetch(`${LB_CONFIG.dbURL}${LB_PATH}/speedrun/${state.lb.uid}.json?auth=${token}`, {
       method: 'PUT', body: JSON.stringify({ pseudo: pseudo.slice(0, 16), time: Math.round(best), t: Date.now() }),
     });
     if (r.ok) { state.lb.sentSpeed = best; state.lb.sentSpeedPseudo = pseudo; save(); refreshPodiums(true); }
   } catch { /* hors ligne : on réessaiera plus tard */ }
 }
 async function lbFetchSpeed() {
-  const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/speedrun.json?orderBy=%22time%22&limitToFirst=50`);
+  const r = await fetch(`${LB_CONFIG.dbURL}${LB_PATH}/speedrun.json?orderBy=%22time%22&limitToFirst=50`);
   if (!r.ok) throw new Error(T('lecture impossible'));
   const data = (await r.json()) || {};
   return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: cleanName(e.pseudo), time: e.time, t: e.t }))
     .sort((a, b) => a.time - b.time || a.t - b.t);
 }
 async function lbFetch() {
-  const r = await fetch(`${LB_CONFIG.dbURL}/leaderboard/histoire.json?orderBy=%22wave%22&limitToLast=50`);
+  const r = await fetch(`${LB_CONFIG.dbURL}${LB_PATH}/histoire.json?orderBy=%22wave%22&limitToLast=50`);
   if (!r.ok) throw new Error(T('lecture impossible'));
   const data = (await r.json()) || {};
   return Object.entries(data).map(([uid, e]) => ({ uid, pseudo: cleanName(e.pseudo), wave: e.wave, t: e.t }))
@@ -8998,7 +9019,7 @@ async function lbFetch() {
 //  En paysage : de chaque côté du plateau. En portrait (pas de place sur les côtés) : au fond, de chaque côté de l'écran d'ordinateur.
 // =====================================================================
 const MEDAL = [0xffc531, 0xd5dde6, 0xd58a4c], MEDAL_CSS = ['#ffc531', '#dbe3ec', '#e09a5c'];
-const PODIUM_KEY = 'toupie-cafards-podiums';
+const PODIUM_KEY = 'toupie-cafards-podiums-s2'; // -s2 : pas de vieux podium de la saison 1 au démarrage
 const PODIUM_PLACE = [0, -0.128, 0.128]; // 1er au milieu, 2e à gauche, 3e à droite
 function fmtPodiumTime(t) {
   t = Math.max(0, Math.floor(t));
@@ -9338,7 +9359,7 @@ async function refreshPodiums(now = false) {
   if (!now && Date.now() - podiums.lastFetch < 60000) return;
   podiums.lastFetch = Date.now();
   try {
-    const get = async q => { const r = await fetch(LB_CONFIG.dbURL + '/leaderboard/' + q); if (!r.ok) throw 0; return Object.entries((await r.json()) || {}).map(([uid, e]) => ({ uid, ...e, pseudo: String(e.pseudo || '???').slice(0, 16) })); };
+    const get = async q => { const r = await fetch(LB_CONFIG.dbURL + LB_PATH + '/' + q); if (!r.ok) throw 0; return Object.entries((await r.json()) || {}).map(([uid, e]) => ({ uid, ...e, pseudo: String(e.pseudo || '???').slice(0, 16) })); };
     const [sp, wv] = await Promise.all([get('speedrun.json?orderBy=%22time%22&limitToFirst=6'), get('histoire.json?orderBy=%22wave%22&limitToLast=6')]);
     const data = { speed: sp.sort((a, b) => a.time - b.time || a.t - b.t).slice(0, 3), wave: wv.sort((a, b) => b.wave - a.wave || a.t - b.t).slice(0, 3) };
     showPodiums(data);
@@ -9347,6 +9368,13 @@ async function refreshPodiums(now = false) {
 }
 setInterval(() => { if (!document.hidden) refreshPodiums(); }, 300000);
 buildPodiums();
+setTimeout(() => {
+  const lb = lbSeason();
+  if (!lb.seasonNews) return;
+  lb.seasonNews = false;
+  save();
+  showToast(T('🏆 Saison 2 du classement !<small>Vagues et speedrun repartent de zéro. Les podiums de la saison 1 restent dans les Légendes.</small>'));
+}, 3500);
 let lbKind = 'wave';
 async function openLeaderboard(kind = lbKind) {
   lbKind = typeof kind === 'string' ? kind : lbKind;
@@ -9356,7 +9384,8 @@ async function openLeaderboard(kind = lbKind) {
   document.getElementById('lbTabSpeed').classList.toggle('on', speed);
   const cfg = dailyConfig();
   document.getElementById('lbSub').textContent = day ? T('Défi du jour n°{0} · {1} {2} · argent gagné en {3} lancers', cfg.n, cfg.twist.icon, cfg.twist.name, DAILY_LAUNCHES)
-    : speed ? T('Détruire le nid le plus vite possible · depuis la vague 1') : T('Mode Histoire · meilleure vague atteinte');
+    : T('Saison {0}', LB_SEASON) + ' · ' + (speed ? T('Détruire le nid le plus vite possible · depuis la vague 1') : T('Mode Histoire · meilleure vague atteinte'));
+  showLegends(day ? null : speed ? 'speed' : 'wave');
   const list = document.getElementById('lbList'), msg = document.getElementById('lbMsg');
   document.getElementById('lbPanel').classList.add('open');
   list.replaceChildren();
@@ -9380,6 +9409,24 @@ async function openLeaderboard(kind = lbKind) {
     msg.textContent = !(state.pseudo || '').trim() ? T('👤 Entre un pseudo dans le menu pour apparaître dans le classement.')
       : rows.length ? '' : day ? T('Personne n’a encore relevé le défi du jour : à toi de jouer !') : speed ? T('Personne n’a encore détruit le nid : à toi de jouer !') : T('Personne pour l’instant : à toi de jouer !');
   } catch { msg.textContent = T('📡 Classement indisponible (pas de connexion ?)'); }
+}
+// Les trois premiers de la saison 1, gardés pour toujours
+function showLegends(kind) {
+  const box = document.getElementById('lbLegends');
+  box.replaceChildren();
+  if (!kind) return;
+  const h = document.createElement('p');
+  h.textContent = T('👑 Légendes de la saison 1');
+  box.appendChild(h);
+  LB_LEGENDS[kind].forEach(([p, v], i) => {
+    const el = document.createElement('div');
+    el.className = 'lbRow top' + (i + 1);
+    el.innerHTML = '<span class="rk"></span><span class="ps"></span><span class="wv"></span>';
+    el.querySelector('.rk').textContent = ['🥇', '🥈', '🥉'][i];
+    el.querySelector('.ps').textContent = p;
+    el.querySelector('.wv').textContent = kind === 'speed' ? fmtClock(v) : T('vague ') + v;
+    box.appendChild(el);
+  });
 }
 document.getElementById('lbBtn').onclick = () => openLeaderboard();
 document.getElementById('lbTabWave').onclick = () => openLeaderboard('wave');
@@ -9872,7 +9919,7 @@ document.getElementById('quitBtn').onclick = () => {
 //  MISES À JOUR : le téléphone garde parfois une ancienne copie du jeu.
 //  On compare avec version.json (jamais mis en cache) et on propose de recharger.
 // =====================================================================
-const VERSION = '2026-11-25.2';
+const VERSION = '2026-11-26.1';
 const updateBar = document.getElementById('updateBar');
 let newVersion = null;
 async function checkForUpdate() {
