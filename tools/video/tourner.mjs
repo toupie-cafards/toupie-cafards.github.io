@@ -101,6 +101,8 @@ async function shoot(i, shot) {
   await load(shot.test);
   await evaluate(PREP.replace('MUSIC', shot.music ? 'true' : 'false'));
   if (shot.setup) await evaluate(`(async () => { const d = __dbg, s = d.state, r = s.savedRuns.histoire, W = __W; ${shot.setup} })()`);
+  // Podiums du bureau : les vrais podiums de la saison 1 (au début de la saison 2, ils sont vides)
+  await evaluate(`(() => { const t = 1; __dbg.showPodiums({ speed: [{ pseudo: "hakou238", time: 945, t }, { pseudo: "Ninken", time: 1386, t }, { pseudo: "MightyTwister92", time: 2380, t }], wave: [{ pseudo: "Loudy", wave: 104, t }, { pseudo: "Luuna", wave: 99, t }, { pseudo: "hakou238", wave: 71, t }] }); return 1; })()`);
   await zoom(shot.zoom);
   const dir = path.join(TMP, `plan${i}`);
   fs.mkdirSync(dir);
